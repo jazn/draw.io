@@ -2855,6 +2855,7 @@ EditorUi.prototype.createUi = function()
 	{
 		this.footerContainer.appendChild(footer);
 		this.container.appendChild(this.footerContainer);
+		this.hideFooter();
 	}
 
 	if (this.sidebar != null && this.sidebarFooterContainer)

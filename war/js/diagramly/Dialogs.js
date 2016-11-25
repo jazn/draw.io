@@ -212,17 +212,17 @@ var StorageDialog = function(editorUi, fn)
 	
 	if (typeof window.DriveClient === 'function')
 	{
-		addLogo(IMAGE_PATH + '/google-drive-logo.svg', mxResources.get('googleDrive'), App.MODE_GOOGLE, 'drive');
+//		addLogo(IMAGE_PATH + '/google-drive-logo.svg', mxResources.get('googleDrive'), App.MODE_GOOGLE, 'drive');
 	}
 
 	if (typeof window.DropboxClient === 'function')
 	{
-		addLogo(IMAGE_PATH + '/dropbox-logo.svg', mxResources.get('dropbox'), App.MODE_DROPBOX, 'dropbox');
+//		addLogo(IMAGE_PATH + '/dropbox-logo.svg', mxResources.get('dropbox'), App.MODE_DROPBOX, 'dropbox');
 	}
 	
 	if (typeof window.OneDriveClient === 'function')
 	{
-		addLogo(IMAGE_PATH + '/onedrive-logo.svg', mxResources.get('oneDrive'), App.MODE_ONEDRIVE, 'oneDrive');
+//		addLogo(IMAGE_PATH + '/onedrive-logo.svg', mxResources.get('oneDrive'), App.MODE_ONEDRIVE, 'oneDrive');
 	}
 	
 	if (!mxClient.IS_IOS || urlParams['storage'] == 'device')
@@ -258,23 +258,23 @@ var StorageDialog = function(editorUi, fn)
 	if (mxClient.IS_SVG && isLocalStorage && urlParams['gapi'] != '0' &&
 		(document.documentMode == null || document.documentMode >= 10))
 	{
-		window.setTimeout(function()
-		{
-			if (editorUi.drive == null)
-			{
-				// To check for Disconnect plugin in chrome use mxClient.IS_GC and check for URL:
-				// chrome-extension://jeoacafpbcihiomhlakheieifhpjdfeo/scripts/vendor/jquery/jquery-2.0.3.min.map
-				var p3 = document.createElement('p');
-				p3.style.padding = '8px';
-				p3.style.fontSize = '9pt';
-				p3.style.marginTop = '-14px';
-				p3.innerHTML = '<a style="background-color:#dcdcdc;padding:5px;color:black;text-decoration:none;" ' +
-					'href="https://plus.google.com/u/0/+DrawIo1/posts/1HTrfsb5wDN" target="_blank">' +
-					'<img border="0" src="' + mxGraph.prototype.warningImage.src + '" align="top"> ' +
-					mxResources.get('googleDriveMissing') + '</a>';
-				div.appendChild(p3);
-			}
-		}, 5000);
+//		window.setTimeout(function()
+//		{
+//			if (editorUi.drive == null)
+//			{
+//				// To check for Disconnect plugin in chrome use mxClient.IS_GC and check for URL:
+//				// chrome-extension://jeoacafpbcihiomhlakheieifhpjdfeo/scripts/vendor/jquery/jquery-2.0.3.min.map
+//				var p3 = document.createElement('p');
+//				p3.style.padding = '8px';
+//				p3.style.fontSize = '9pt';
+//				p3.style.marginTop = '-14px';
+//				p3.innerHTML = '<a style="background-color:#dcdcdc;padding:5px;color:black;text-decoration:none;" ' +
+//					'href="https://plus.google.com/u/0/+DrawIo1/posts/1HTrfsb5wDN" target="_blank">' +
+//					'<img border="0" src="' + mxGraph.prototype.warningImage.src + '" align="top"> ' +
+//					mxResources.get('googleDriveMissing') + '</a>';
+//				div.appendChild(p3);
+//			}
+//		}, 5000);
 	}
 	
 	this.container = div;
@@ -3695,7 +3695,7 @@ var CreateDialog = function(editorUi, title, createFn, cancelFn, dlgTitle, btnLa
 		mxUtils.write(googleOption, mxResources.get('googleDrive'));
 		serviceSelect.appendChild(googleOption);
 		
-		addLogo(IMAGE_PATH + '/google-drive-logo.svg', mxResources.get('googleDrive'), App.MODE_GOOGLE, 'drive');
+//		addLogo(IMAGE_PATH + '/google-drive-logo.svg', mxResources.get('googleDrive'), App.MODE_GOOGLE, 'drive');
 	}
 
 	if (typeof window.DropboxClient === 'function')
@@ -3710,7 +3710,7 @@ var CreateDialog = function(editorUi, title, createFn, cancelFn, dlgTitle, btnLa
 			dropboxOption.setAttribute('selected', 'selected');
 		}
 		
-		addLogo(IMAGE_PATH + '/dropbox-logo.svg', mxResources.get('dropbox'), App.MODE_DROPBOX, 'dropbox');
+//		addLogo(IMAGE_PATH + '/dropbox-logo.svg', mxResources.get('dropbox'), App.MODE_DROPBOX, 'dropbox');
 	}
 
 	if (typeof window.OneDriveClient === 'function')
@@ -3725,7 +3725,7 @@ var CreateDialog = function(editorUi, title, createFn, cancelFn, dlgTitle, btnLa
 			oneDriveOption.setAttribute('selected', 'selected');
 		}
 		
-		addLogo(IMAGE_PATH + '/onedrive-logo.svg', mxResources.get('oneDrive'), App.MODE_ONEDRIVE, 'oneDrive');
+//		addLogo(IMAGE_PATH + '/onedrive-logo.svg', mxResources.get('oneDrive'), App.MODE_ONEDRIVE, 'oneDrive');
 	}
 	
 	if (!Editor.useLocalStorage || urlParams['storage'] == 'device' ||

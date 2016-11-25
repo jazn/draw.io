@@ -1741,50 +1741,50 @@
 		{
 			if (editorUi.drive != null)
 			{
-				menu.addItem(mxResources.get('googleDrive') + '...', null, function()
-				{
-					editorUi.pickFile(App.MODE_GOOGLE);
-				}, parent);
+//				menu.addItem(mxResources.get('googleDrive') + '...', null, function()
+//				{
+//					editorUi.pickFile(App.MODE_GOOGLE);
+//				}, parent);
 			}
 			else if (googleEnabled)
 			{
-				menu.addItem(mxResources.get('googleDrive') + ' (' + mxResources.get('loading') + '...)', null, function()
-				{
-					// do nothing
-				}, parent, null, false);
+//				menu.addItem(mxResources.get('googleDrive') + ' (' + mxResources.get('loading') + '...)', null, function()
+//				{
+//					// do nothing
+//				}, parent, null, false);
 			}
 			
 			if (editorUi.dropbox != null)
 			{
-				menu.addItem(mxResources.get('dropbox') + '...', null, function()
-				{
-					editorUi.pickFile(App.MODE_DROPBOX);
-				}, parent);
+//				menu.addItem(mxResources.get('dropbox') + '...', null, function()
+//				{
+//					editorUi.pickFile(App.MODE_DROPBOX);
+//				}, parent);
 			}
 			else if (dropboxEnabled)
 			{
-				menu.addItem(mxResources.get('dropbox') + ' (' + mxResources.get('loading') + '...)', null, function()
-				{
-					// do nothing
-				}, parent, null, false);
+//				menu.addItem(mxResources.get('dropbox') + ' (' + mxResources.get('loading') + '...)', null, function()
+//				{
+//					// do nothing
+//				}, parent, null, false);
 			}
 			
 			if (editorUi.oneDrive != null)
 			{
-				menu.addItem(mxResources.get('oneDrive') + '...', null, function()
-				{
-					editorUi.pickFile(App.MODE_ONEDRIVE);
-				}, parent);
+//				menu.addItem(mxResources.get('oneDrive') + '...', null, function()
+//				{
+//					editorUi.pickFile(App.MODE_ONEDRIVE);
+//				}, parent);
 			}
 			else if (oneDriveEnabled)
 			{
-				menu.addItem(mxResources.get('oneDrive') + ' (' + mxResources.get('loading') + '...)', null, function()
-				{
-					// do nothing
-				}, parent, null, false);
+//				menu.addItem(mxResources.get('oneDrive') + ' (' + mxResources.get('loading') + '...)', null, function()
+//				{
+//					// do nothing
+//				}, parent, null, false);
 			}
 			
-			menu.addSeparator(parent);
+//			menu.addSeparator(parent);
 
 			if (isLocalStorage && urlParams['browser'] != '0')
 			{
