@@ -44,8 +44,8 @@ public class Utils
 	public static String inflate(byte[] binary) throws IOException
 	{
 		StringBuffer result = new StringBuffer();
-		InputStream in = new InflaterInputStream(new ByteArrayInputStream(
-				binary), new Inflater(true));
+		InputStream in = new InflaterInputStream(
+				new ByteArrayInputStream(binary), new Inflater(true));
 
 		while (in.available() != 0)
 		{
@@ -76,18 +76,19 @@ public class Utils
 		Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
 		byte[] inBytes = inString.getBytes("UTF-8");
 		deflater.setInput(inBytes);
-		
-		ByteArrayOutputStream outputStream = new ByteArrayOutputStream(inBytes.length);   	
-		deflater.finish();  
-		byte[] buffer = new byte[IO_BUFFER_SIZE];   
+
+		ByteArrayOutputStream outputStream = new ByteArrayOutputStream(
+				inBytes.length);
+		deflater.finish();
+		byte[] buffer = new byte[IO_BUFFER_SIZE];
 
 		while (!deflater.finished())
-		{  
+		{
 			int count = deflater.deflate(buffer); // returns the generated code... index  
-			outputStream.write(buffer, 0, count);   
-		}  
+			outputStream.write(buffer, 0, count);
+		}
 
-		outputStream.close();  
+		outputStream.close();
 		byte[] output = outputStream.toByteArray();
 
 		return output;
@@ -99,8 +100,7 @@ public class Utils
 	 * @param out the output stream
 	 * @throws IOException
 	 */
-	public static void copy(InputStream in, OutputStream out)
-			throws IOException
+	public static void copy(InputStream in, OutputStream out) throws IOException
 	{
 		copy(in, out, IO_BUFFER_SIZE);
 	}
@@ -159,21 +159,27 @@ public class Utils
 	  */
 	public static String encodeURIComponent(String s, String charset)
 	{
-		String result = null;
-
-		try
+		if (s == null)
 		{
-			result = URLEncoder.encode(s, charset).replaceAll("\\+", "%20")
-					.replaceAll("\\%21", "!").replaceAll("\\%28", "(")
-					.replaceAll("\\%29", ")").replaceAll("\\%7E", "~");
+			return null;
 		}
-
-		// This exception should never occur.
-		catch (UnsupportedEncodingException e)
+		else
 		{
-			result = s;
-		}
+			String result;
 
-		return result;
+			try
+			{
+				result = URLEncoder.encode(s, charset).replaceAll("\\+", "%20")
+						.replaceAll("\\%21", "!").replaceAll("\\%27", "'").replaceAll("\\%28", "(")
+						.replaceAll("\\%29", ")").replaceAll("\\%7E", "~");
+			}
+			catch (UnsupportedEncodingException e)
+			{
+				// This exception should never occur
+				result = s;
+			}
+
+			return result;
+		}
 	}
 }

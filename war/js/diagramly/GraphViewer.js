@@ -80,7 +80,8 @@ GraphViewer.prototype.init = function(container, xmlNode, graphConfig)
 	this.layersEnabled = mxUtils.indexOf(this.toolbarItems, 'layers') >= 0;
 	this.lightboxEnabled = mxUtils.indexOf(this.toolbarItems, 'lightbox') >= 0;
 	this.lightboxClickEnabled = this.graphConfig.lightbox != false;
-	this.widthIsEmpty = (container != null) ? container.style.width == '' : true;
+	this.initialWidth = (container != null) ? container.style.width : null;
+	this.widthIsEmpty = (this.initialWidth != null) ? this.initialWidth == '' : true;
 	this.editor = null;
 
 	if (xmlNode != null)
@@ -213,23 +214,30 @@ GraphViewer.prototype.init = function(container, xmlNode, graphConfig)
 					container.setAttribute('title', this.graphConfig.title);
 				}
 			});
+
+			var MutObs = window.MutationObserver ||
+				window.WebKitMutationObserver ||
+				window.MozMutationObserver;
 			
-			if (this.checkVisibleState && container.offsetWidth == 0)
+			if (this.checkVisibleState && container.offsetWidth == 0 && typeof MutObs !== 'undefined')
 			{
-				// Finds first parent with valid offset width or uses the document body
-				// LATER: In some cases a closer ancestor may result in better performance
-				// KNOWN: Possible side-effect of setting relative position on body
-				var resizeSensor = new ResizeSensor(this.getVisibleParent(container), function()
+				// Delayed rendering if inside hidden container and event available
+				var par = this.getObservableParent(container);
+			
+				var observer = new MutObs(mxUtils.bind(this, function(mutation)
 				{
 					if (container.offsetWidth > 0)
 					{
-						resizeSensor.detach();
+						observer.disconnect();
 						render();
 					}
-				});
+				}));
+				
+				observer.observe(par, {attributes: true});
 			}
 			else
 			{
+				// Immediate rendering in all other cases
 				render();
 			}
 		}
@@ -239,11 +247,12 @@ GraphViewer.prototype.init = function(container, xmlNode, graphConfig)
 /**
  * 
  */
-GraphViewer.prototype.getVisibleParent = function(container)
+GraphViewer.prototype.getObservableParent = function(container)
 {
-	var node = container;
+	var node = container.parentNode;
 	
-	while (node != document.body && node.parentNode != null && node.offsetWidth == 0)
+	while (node != document.body && node.parentNode != null &&
+		mxUtils.getCurrentStyle(node).display !== 'none')
 	{
 		node = node.parentNode;
 	}
@@ -273,6 +282,19 @@ GraphViewer.prototype.getImageUrl = function(url)
 /**
  * 
  */
+GraphViewer.prototype.setXmlNode = function(xmlNode)
+{
+	this.xmlDocument = xmlNode.ownerDocument;
+	this.xml = mxUtils.getXml(xmlNode);
+	this.xmlNode = xmlNode;
+	
+	this.updateGraphXml(xmlNode);
+	this.fireEvent(new mxEventObject('xmlNodeChanged'));
+};
+
+/**
+ * 
+ */
 GraphViewer.prototype.setFileNode = function(xmlNode)
 {
 	if (this.xmlNode == null)
@@ -282,41 +304,7 @@ GraphViewer.prototype.setFileNode = function(xmlNode)
 		this.xmlNode = xmlNode;
 	}
 	
-	if (this.graph != null)
-	{
-		this.graph.view.translate = new mxPoint();
-		this.graph.view.scale = 1;
-		this.graph.getModel().clear();
-		
-		// Restores initial CSS state
-		if (this.widthIsEmpty)
-		{
-			this.graph.container.style.width = '';
-			this.graph.container.style.height = '';
-		}
-
-		this.editor.setGraphXml(xmlNode);
-		this.positionGraph();
-		
-		this.graph.initialViewState = {
-			translate: this.graph.view.translate.clone(),
-			scale: this.graph.view.scale
-		};
-	}
-};
-
-/**
- * 
- */
-GraphViewer.prototype.setXmlNode = function(xmlNode)
-{
-	this.xmlDocument = xmlNode.ownerDocument;
-	this.xml = mxUtils.getXml(xmlNode);
-	this.xmlNode = xmlNode;
-	
-	this.updateGraphXml(xmlNode);
-	
-	this.fireEvent(new mxEventObject('xmlNodeChanged'));
+	this.setGraphXml(xmlNode);
 };
 
 /**
@@ -324,29 +312,39 @@ GraphViewer.prototype.setXmlNode = function(xmlNode)
  */
 GraphViewer.prototype.updateGraphXml = function(xmlNode)
 {
+	this.setGraphXml(xmlNode);
+	this.fireEvent(new mxEventObject('graphChanged'));
+};
+
+/**
+ * 
+ */
+GraphViewer.prototype.setGraphXml = function(xmlNode)
+{
 	if (this.graph != null)
 	{
 		this.graph.view.translate = new mxPoint();
 		this.graph.view.scale = 1;
 		this.graph.getModel().clear();
-		
+		this.editor.setGraphXml(xmlNode);
+				
 		// Restores initial CSS state
 		if (this.widthIsEmpty)
 		{
 			this.graph.container.style.width = '';
 			this.graph.container.style.height = '';
 		}
-
-		this.editor.setGraphXml(xmlNode);
-		this.positionGraph();
+		else
+		{
+			this.graph.container.style.width = this.initialWidth;
+		}
 		
+		this.positionGraph();
 		this.graph.initialViewState = {
 			translate: this.graph.view.translate.clone(),
 			scale: this.graph.view.scale
 		};
 	}
-	
-	this.fireEvent(new mxEventObject('graphChanged'));
 };
 
 /**
@@ -514,9 +512,10 @@ GraphViewer.prototype.addSizeHandler = function()
 		{
 			container.style.minWidth = '100%';
 		}
-
-		if (bounds.width + 2 * this.graph.border > container.offsetWidth ||
-			bounds.height + 2 * this.graph.border > this.graphConfig['max-height'])
+		
+		if (container.offsetWidth > 0 &&
+			(bounds.width + 2 * this.graph.border > container.offsetWidth ||
+			bounds.height + 2 * this.graph.border > this.graphConfig['max-height']))
 		{
 			var maxScale = null;
 			
@@ -886,7 +885,6 @@ GraphViewer.prototype.addToolbar = function()
 				if (this.xmlNode != lastXmlNode)
 				{
 					diagrams = this.xmlNode.getElementsByTagName('diagram');
-					this.currentPage = 0;
 					pageInfo.innerHTML = '';
 					mxUtils.write(pageInfo, (this.currentPage + 1) + ' / ' + diagrams.length);
 					lastXmlNode = this.xmlNode;
@@ -897,8 +895,6 @@ GraphViewer.prototype.addToolbar = function()
 				nextButton.style.display = pageInfo.style.display;
 			});
 			
-			var model = this.graph.getModel();
-
 			// LATER: Add event for setGraphXml
 			this.addListener('xmlNodeChanged', update);
 			update();
@@ -956,6 +952,7 @@ GraphViewer.prototype.addToolbar = function()
 						layersDialog.style.backgroundColor = '#eee';
 						layersDialog.style.fontFamily = 'Helvetica Neue,Helvetica,Arial Unicode MS,Arial';
 						layersDialog.style.fontSize = '11px';
+						layersDialog.style.zIndex = this.toolbarZIndex + 1;
 						mxUtils.setOpacity(layersDialog, 80);
 						var origin = mxUtils.getDocumentScrollOrigin(document);
 						layersDialog.style.left = origin.x + r.left + 'px';
@@ -1104,23 +1101,19 @@ GraphViewer.prototype.addToolbar = function()
  */
 GraphViewer.prototype.addClickHandler = function(graph, ui)
 {
-	var isBlankLink = graph.isBlankLink;
-	var config = this.graphConfig;
-	
-	graph.isBlankLink = function(href)
-	{
-		return config.target != 'self' && isBlankLink.apply(this, arguments);
-	};
+	graph.linkPolicy = this.graphConfig.target || graph.linkPolicy;
 	
 	graph.addClickHandler(this.graphConfig.highlight, function(evt)
 	{
+		// Hides lightbox if any links are clicked
 		if (ui != null)
 		{
 			ui.destroy();
 		}
 	}, mxUtils.bind(this, function(evt)
 	{
-		if (ui == null && this.lightboxClickEnabled && (!mxEvent.isTouchEvent(evt) ||
+		if (ui == null && this.lightboxClickEnabled &&
+			(!mxEvent.isTouchEvent(evt) ||
 			this.toolbarItems.length == 0))
 		{
 			this.showLightbox();
@@ -1151,13 +1144,13 @@ GraphViewer.prototype.showLightbox = function()
 			});
 			
 			mxEvent.addListener(window, 'message', receive);
-			wnd = window.open('https://test.draw.io/?dev=1&client=1&chrome=0&lightbox=1&close=1&edit=_blank' + p);
+			wnd = window.open('https://www.draw.io/?client=1&chrome=0&lightbox=1&close=1&edit=_blank' + p);
 		}
 		else
 		{
 			// Data is pulled from global variable after tab loads
 			window.drawdata = this.xml;
-			window.open('https://test.draw.io/?dev=1&client=1&chrome=0&lightbox=1&edit=_blank' + p);
+			window.open('https://www.draw.io/?client=1&chrome=0&lightbox=1&edit=_blank' + p);
 		}
 	}
 	else
@@ -1261,7 +1254,12 @@ GraphViewer.prototype.showLocalLightbox = function()
 		
 		if (ui.pages != null && ui.currentPage != null)
 		{
-			param = '&page=' + mxUtils.indexOf(ui.pages, ui.currentPage);
+			var pageIndex = mxUtils.indexOf(ui.pages, ui.currentPage);
+		
+			if (pageIndex > 0)
+			{
+				param = '&page=' + pageIndex;
+			}
 		}
 		
 		return editorGetEditBlankUrl.apply(this, arguments) + param;
@@ -1563,20 +1561,32 @@ GraphViewer.initCss = function()
 };
 
 /**
+ * Lookup for URLs.
+ */
+GraphViewer.cachedUrls = {};
+
+/**
  * Workaround for unsupported CORS in IE9 XHR
  */
 GraphViewer.getUrl = function(url, onload, onerror)
 {
-	var xhr = (navigator.userAgent.indexOf('MSIE 9') > 0) ? new XDomainRequest() : new XMLHttpRequest();
-	xhr.open('GET', url);
-	
-    xhr.onload = function()
-    {
-    	onload((xhr.getText != null) ? xhr.getText() : xhr.responseText);
-	};
-	
-    xhr.onerror = onerror;
-    xhr.send();
+	if (GraphViewer.cachedUrls[url] != null)
+	{
+		onload(GraphViewer.cachedUrls[url]);
+	}
+	else
+	{
+		var xhr = (navigator.userAgent.indexOf('MSIE 9') > 0) ? new XDomainRequest() : new XMLHttpRequest();
+		xhr.open('GET', url);
+		
+	    xhr.onload = function()
+	    {
+	    	onload((xhr.getText != null) ? xhr.getText() : xhr.responseText);
+		};
+		
+	    xhr.onerror = onerror;
+	    xhr.send();
+	}
 };
 
 /**

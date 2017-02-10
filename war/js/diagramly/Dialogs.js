@@ -16,7 +16,7 @@ var StorageDialog = function(editorUi, fn)
 		elt.style.bottom = bottom;
 	}
 	
-	if (!editorUi.isOffline())
+	if (!editorUi.isOffline() && editorUi.getServiceCount() > 1)
 	{
 		var help = document.createElement('a');
 		help.setAttribute('href', 'https://support.draw.io/display/DO/Selecting+Storage');
@@ -271,7 +271,7 @@ var StorageDialog = function(editorUi, fn)
 //				p3.innerHTML = '<a style="background-color:#dcdcdc;padding:5px;color:black;text-decoration:none;" ' +
 //					'href="https://plus.google.com/u/0/+DrawIo1/posts/1HTrfsb5wDN" target="_blank">' +
 //					'<img border="0" src="' + mxGraph.prototype.warningImage.src + '" align="top"> ' +
-//					mxResources.get('googleDriveMissing') + '</a>';
+//					mxResources.get('googleDriveMissingClickHere') + '</a>';
 //				div.appendChild(p3);
 //			}
 //		}, 5000);
@@ -290,8 +290,9 @@ var SplashDialog = function(editorUi)
 	
 	editorUi.addLanguageMenu(div);
 	var help = null;
+	var serviceCount = editorUi.getServiceCount();
 	
-	if (!editorUi.isOffline())
+	if (!editorUi.isOffline() && serviceCount > 1)
 	{
 		help = document.createElement('a');
 		help.setAttribute('href', 'https://support.draw.io/display/DO/Selecting+Storage');
@@ -451,28 +452,6 @@ var SplashDialog = function(editorUi)
 		storage = mxResources.get('browser');
 	}
 	
-	var serviceCount = 0;
-	
-	if (editorUi.drive != null)
-	{
-		serviceCount++
-	}
-	
-	if (editorUi.dropbox != null)
-	{
-		serviceCount++
-	}
-	
-	if (isLocalStorage)
-	{
-		serviceCount++
-	}
-	
-	if (!mxClient.IS_IOS)
-	{
-		serviceCount++
-	}
-
 	if (serviceCount > 1)
 	{
 		var link = document.createElement('a');
@@ -540,7 +519,7 @@ var SplashDialog = function(editorUi)
 	div.appendChild(buttons);
 	
 	// Changes Chrome App dialog
-	if (mxClient.IS_CHROMEAPP)
+	if (serviceCount < 2)
 	{
 		hd.style.paddingTop = '12px';
 		hd.innerHTML = '';
@@ -753,770 +732,220 @@ var ErrorDialog = function(editorUi, title, message, buttonText, fn, retry, butt
 /**
  * Constructs a new embed dialog
  */
-var EmbedHtmlDialog = function(editorUi)
+var EmbedDialog = function(editorUi, result, timeout, ignoreSize, previewFn)
 {
-	var file = editorUi.getCurrentFile();
 	var div = document.createElement('div');
+	var maxSize = 500000;
+	var maxFbSize = 51200;
+	var maxTwitterSize = 7168;
 
-	var graph = editorUi.editor.graph;
-	var bounds = graph.getGraphBounds();
-	var scale = graph.view.scale;
-	var x0 = Math.floor(bounds.x / scale - graph.view.translate.x);
-	var y0 = Math.floor(bounds.y / scale - graph.view.translate.y);
+	// Checks if result is a link
+	var validUrl = /^https?:\/\//.test(result) || /^mailto:\/\//.test(result);
 
-	mxUtils.write(div, mxResources.get('mainEmbedNotice') + ': ');
+	mxUtils.write(div, mxResources.get((result.length < maxSize) ?
+		((validUrl) ? 'link' : 'mainEmbedNotice') : 'preview') + ':');
 	mxUtils.br(div);
 	
-	var textarea = document.createElement('textarea');
-	textarea.style.marginTop = '6px';
-	textarea.style.width = '550px';
-	textarea.style.height = '160px';
-	textarea.style.marginBottom = '10px';
-	textarea.style.resize = 'none';
+	var size = document.createElement('div');
+	size.style.position = 'absolute';
+	size.style.top = '30px';
+	size.style.right = '30px';
+	size.style.color = 'gray';
+	mxUtils.write(size, editorUi.formatFileSize(result.length));
+
+	div.appendChild(size);
 	
-	div.appendChild(textarea);
+	// Using DIV for faster rendering
+	var text = document.createElement('textarea');
+	text.setAttribute('autocomplete', 'off');
+	text.setAttribute('autocorrect', 'off');
+	text.setAttribute('autocapitalize', 'off');
+	text.setAttribute('spellcheck', 'false');
+	text.style.marginTop = '10px';
+	text.style.resize = 'none';
+	text.style.height = '150px';
+	text.style.width = '440px';
+	text.style.border = '1px solid gray';
+	text.value = mxResources.get('updatingDocument');
+	div.appendChild(text);
 	mxUtils.br(div);
 
-	mxUtils.write(div, mxResources.get('embedNotice') + ': ');
-	mxUtils.br(div);
-
-	var textarea2 = document.createElement('textarea');
-	textarea2.style.marginTop = '6px';
-	textarea2.style.width = '550px';
-	textarea2.style.height = '20px';
-	textarea2.style.resize = 'none';
-	textarea2.style.marginBottom = '10px';
-	div.appendChild(textarea2);
-
-	mxUtils.br(div);
-	mxUtils.write(div, mxResources.get('publicDiagramUrl') + ': ');
-	
-	var urlInput = document.createElement('input');
-	urlInput.setAttribute('type', 'text');
-	urlInput.setAttribute('size', '28');
-	urlInput.style.width = '340px';
-	urlInput.style.marginBottom = '8px';
-	div.appendChild(urlInput);
-	mxUtils.br(div);
-	
-	var options = document.createElement('div');
-	options.style.paddingTop = '10px';
-	options.style.textAlign = 'center';
-
-	var fitCheckBox = document.createElement('input');
-	fitCheckBox.setAttribute('type', 'checkbox');
-	fitCheckBox.setAttribute('checked', 'checked');
-	fitCheckBox.defaultChecked = true;
-	options.appendChild(fitCheckBox);
-	mxUtils.write(options, mxResources.get('fit'));
-
-	var label = document.createElement('span');
-	label.style.marginLeft = '10px';
-	mxUtils.write(label, mxResources.get('zoom') + ': ');
-	options.appendChild(label);
-	
-	var zoomInput = document.createElement('input');
-	zoomInput.setAttribute('type', 'text');
-	zoomInput.setAttribute('size', '4');
-	zoomInput.style.width = '40px';
-	zoomInput.value = '100%';
-	options.appendChild(zoomInput);
-
-	var label = document.createElement('span');
-	label.style.marginLeft = '10px';
-	mxUtils.write(label, mxResources.get('link') + ': ');
-	options.appendChild(label);
-	
-	var borderColorInput = document.createElement('input');
-	borderColorInput.setAttribute('type', 'text');
-	borderColorInput.setAttribute('size', '8');
-	borderColorInput.style.width = '50px';
-	borderColorInput.value = '#0000ff';
-	options.appendChild(borderColorInput);
-	
-	mxUtils.br(options);
-
-	var lightboxCheckBox = document.createElement('input');
-	lightboxCheckBox.setAttribute('type', 'checkbox');
-	lightboxCheckBox.setAttribute('checked', 'checked');
-	lightboxCheckBox.defaultChecked = true;
-	lightboxCheckBox.style.marginTop = '14px';
-	options.appendChild(lightboxCheckBox);
-	mxUtils.write(options, mxResources.get('lightbox'));
-
-	var editCheckBox = document.createElement('input');
-	editCheckBox.setAttribute('type', 'checkbox');
-	editCheckBox.setAttribute('checked', 'checked');
-	editCheckBox.defaultChecked = true;
-	editCheckBox.style.marginLeft = '10px';
-	//options.appendChild(editCheckBox);
-	//mxUtils.write(options, mxResources.get('edit'));
-
-	var layersCheckBox = document.createElement('input');
-	layersCheckBox.setAttribute('type', 'checkbox');
-	layersCheckBox.style.marginLeft = '10px';
-	
-	var model = editorUi.editor.graph.getModel();
-
-	if (editorUi.pages == null || editorUi.pages.length == 0 &&
-		(model.getChildCount(model.getRoot()) <= 1))
-	{
-		layersCheckBox.setAttribute('disabled', 'disabled');
-	}
-	else
-	{
-		layersCheckBox.setAttribute('checked', 'checked');
-		layersCheckBox.defaultChecked = true;
-	}
-	
-	options.appendChild(layersCheckBox);
-	mxUtils.write(options, mxResources.get('layers'));
-	
-	var zoomCheckBox = document.createElement('input');
-	zoomCheckBox.setAttribute('type', 'checkbox');
-	zoomCheckBox.style.marginLeft = '10px';
-	options.appendChild(zoomCheckBox);
-	mxUtils.write(options, mxResources.get('zoom'));
-	
-	zoomCheckBox.setAttribute('checked', 'checked');
-	zoomCheckBox.defaultChecked = true;
-	
-	var pagesCheckBox = document.createElement('input');
-	pagesCheckBox.setAttribute('type', 'checkbox');
-	pagesCheckBox.style.marginLeft = '10px';
-
-	if (editorUi.pages != null && editorUi.pages.length > 1)
-	{
-		pagesCheckBox.setAttribute('checked', 'checked');
-		pagesCheckBox.defaultChecked = true;
-		options.appendChild(pagesCheckBox);		
-	}
-
-	mxUtils.write(options, mxResources.get('allPages'));
-	div.appendChild(options);
-
-	function update(force)
-	{
-		var s = editorUi.getBasenames();
-		var data = {};
-		
-		if (borderColorInput.value != '' && borderColorInput.value != mxConstants.NONE)
-		{
-			data.highlight = borderColorInput.value;
-		}
-		
-		if (!lightboxCheckBox.checked)
-		{
-			data.lightbox = false;
-		}
-		
-		data.nav = graph.foldingEnabled;
-		var zoom = parseInt(zoomInput.value);
-		
-		if (!isNaN(zoom) && zoom != 100)
-		{
-			data.zoom = zoom / 100;
-		}
-		
-		var tb = [];
-		
-		if (pagesCheckBox.checked)
-		{
-			tb.push('pages');
-			data.resize = true;
-			
-			if (editorUi.pages != null && editorUi.currentPage != null)
-			{
-				data.page = mxUtils.indexOf(editorUi.pages, editorUi.currentPage);
-			}
-		}
-		
-		if (zoomCheckBox.checked)
-		{
-			tb.push('zoom');
-			data.resize = true;
-		}
-		
-		if (layersCheckBox.checked)
-		{
-			tb.push('layers');
-		}
-		
-		if (tb.length > 0)
-		{
-			if (lightboxCheckBox)
-			{
-				tb.push('lightbox');
-			}
-			
-			data.toolbar = tb.join(' ');
-		}
-
-		if (editCheckBox.checked)
-		{
-			if (urlInput.value != '')
-			{
-				data.edit = urlInput.value;
-			}
-			else
-			{
-				data.edit = '_blank';
-			}
-		}
-		
-		if (urlInput.value != '')
-		{
-			data.url = urlInput.value;
-		}
-		else
-		{
-			data.xml = editorUi.getFileData(true, null, null, null, null, !pagesCheckBox.checked);
-		}
-	
-		textarea.value = '<div class="mxgraph" style="' +
-			((fitCheckBox.checked) ? 'max-width:100%;' : '') +
-			((tb != '') ? 'border:1px solid transparent;' : '') +
-			'" data-mxgraph="' + mxUtils.htmlEntities(JSON.stringify(data)) + '"></div>';
-	
-		var s2 = (s.length > 0) ? (((urlParams['dev'] == '1') ?
-			'https://test.draw.io/embed2.js?dev=1&s=' :
-			'https://www.draw.io/embed2.js?s=') + s.join(';')) :
-			(((urlParams['dev'] == '1') ?
-			'https://test.draw.io/js/viewer.min.js' :
-			'https://www.draw.io/js/viewer.min.js'));
-	
-		textarea2.value = '<script type="text/javascript" src="' + s2 + '"></script>';
-		textarea.focus();
-		
-		if (mxClient.IS_FF || document.documentMode >= 5 || mxClient.IS_QUIRKS)
-		{
-			textarea.select();
-		}
-		else
-		{
-			document.execCommand('selectAll', false, null);
-		}
-	};
-	
 	this.init = function()
 	{
-		update();
-	};
-
-	mxEvent.addListener(urlInput, 'change', update);
-	mxEvent.addListener(borderColorInput, 'change', update);
-	mxEvent.addListener(zoomInput, 'change', update);
-	mxEvent.addListener(layersCheckBox, 'change', update);
-	mxEvent.addListener(editCheckBox, 'change', update);
-	mxEvent.addListener(fitCheckBox, 'change', update);
-	mxEvent.addListener(lightboxCheckBox, 'change', update);
-	mxEvent.addListener(zoomCheckBox, 'change', update);
-	mxEvent.addListener(pagesCheckBox, 'change', update);
-	
-	var buttons = document.createElement('div');
-	buttons.style.paddingTop = '20px';
-	buttons.style.textAlign = 'right';
-	
-	if (!editorUi.isOffline())
-	{
-		var helpBtn = mxUtils.button(mxResources.get('help'), function()
+		window.setTimeout(function()
 		{
-			window.open('https://support.draw.io/pages/viewpage.action?pageId=12878123');
-		});
-		
-		helpBtn.className = 'geBtn';	
-		buttons.appendChild(helpBtn);
-	}
-
-	// Loads forever in IE9
-	if (!mxClient.IS_CHROMEAPP && !navigator.standalone && mxClient.IS_SVG &&
-		(document.documentMode == null || document.documentMode > 9))
-	{
-		var previewBtn = mxUtils.button(mxResources.get('preview'), function()
-		{
-			var wnd = window.open();
-			var doc = wnd.document;
-	
-			if (document.compatMode === 'CSS1Compat')
+			if (result.length < maxSize)
 			{
-				doc.writeln('<!DOCTYPE html>');
-			}
-			
-			doc.writeln('<html>');
-			doc.writeln('<head><title>' + encodeURIComponent(mxResources.get('preview')) +
-				'</title><meta charset="utf-8"></head>');
-			doc.writeln('<body>');
-			doc.writeln(textarea.value);
-			
-			var direct = mxClient.IS_IE || mxClient.IS_EDGE || document.documentMode != null;
-			
-			if (direct)
-			{
-				doc.writeln(textarea2.value);
-			}
-			
-			doc.writeln('</body>');
-			doc.writeln('</html>');
-			doc.close();
-	
-			// Adds script tag after closing page and delay to fix timing issues
-			if (!direct)
-			{
-				var info = wnd.document.createElement('div');
-				info.marginLeft = '26px';
-				info.marginTop = '26px';
-				mxUtils.write(info, mxResources.get('updatingDocument'));
-
-				var img = wnd.document.createElement('img');
-				img.setAttribute('src', window.location.protocol + '//' + window.location.hostname +
-					'/' + IMAGE_PATH + '/spin.gif');
-				img.style.marginLeft = '6px';
-				info.appendChild(img);
-				
-				wnd.document.body.insertBefore(info, wnd.document.body.firstChild);
-				
-				window.setTimeout(function()
-				{
-					var script = document.createElement('script');
-					script.type = 'text/javascript';
-					script.src = /<script.*?src="(.*?)"/.exec(textarea2.value)[1];
-					doc.body.appendChild(script);
+				text.value = result;
+				text.focus();
 					
-					info.parentNode.removeChild(info);
-				}, 20);
-			}
-		});
-		
-		previewBtn.className = 'geBtn';
-		buttons.appendChild(previewBtn);
-	}
-
-	var closeBtn = mxUtils.button(mxResources.get('close'), function()
-	{
-		editorUi.hideDialog();
-	});
-	
-	var copyBtn = mxUtils.button(mxResources.get('copy'), function()
-	{
-		textarea.focus();
-		
-		if (mxClient.IS_FF || document.documentMode >= 5 || mxClient.IS_QUIRKS)
-		{
-			textarea.select();
-		}
-		else
-		{
-			document.execCommand('selectAll', false, null);
-		}
-		
-		document.execCommand('copy');
-		editorUi.alert(mxResources.get('copiedToClipboard'));
-	});
-
-	buttons.appendChild(closeBtn);
-
-	// Does not work in Safari and shows annoying dialog for IE11-
-	if (!mxClient.IS_SF && document.documentMode == null)
-	{
-		buttons.appendChild(copyBtn);
-		copyBtn.className = 'geBtn gePrimaryBtn';
-		closeBtn.className = 'geBtn';
-	}
-	else
-	{
-		closeBtn.className = 'geBtn gePrimaryBtn';
-	}
-	
-	div.appendChild(buttons);
-	
-	this.container = div;
-};
-
-/**
- * Constructs a new embed dialog
- */
-var EmbedSvgDialog = function(editorUi, isImage)
-{
-	var file = editorUi.getCurrentFile();
-	var div = document.createElement('div');
-
-	var graph = editorUi.editor.graph;
-	var bounds = graph.getGraphBounds();
-	var scale = graph.view.scale;
-	var x0 = Math.floor(bounds.x / scale - graph.view.translate.x);
-	var y0 = Math.floor(bounds.y / scale - graph.view.translate.y);
-
-	mxUtils.write(div, mxResources.get('mainEmbedNotice') + ': ');
-	mxUtils.br(div);
-	
-	var textarea = document.createElement('textarea');
-	textarea.style.marginTop = '6px';
-	textarea.style.width = '550px';
-	textarea.style.height = '280px';
-	textarea.style.resize = 'none';
-
-	div.appendChild(textarea);
-	mxUtils.br(div);
-
-	var options = document.createElement('div');
-	options.style.paddingTop = '16px';
-	options.style.textAlign = 'center';
-
-	var fitCheckBox = document.createElement('input');
-	fitCheckBox.setAttribute('type', 'checkbox');
-	fitCheckBox.setAttribute('checked', 'checked');
-	fitCheckBox.defaultChecked = true;
-	options.appendChild(fitCheckBox);
-	mxUtils.write(options, mxResources.get('fit'));
-
-	var shadowCheckBox = document.createElement('input');
-	shadowCheckBox.setAttribute('type', 'checkbox');
-	shadowCheckBox.style.marginLeft = '30px';
-	
-	if (graph.shadowVisible)
-	{
-		shadowCheckBox.setAttribute('checked', 'checked');
-		shadowCheckBox.defaultChecked = true;
-	}
-	
-	if (!isImage || editorUi.isExportToCanvas())
-	{
-		options.appendChild(shadowCheckBox);
-		mxUtils.write(options, mxResources.get('shadow'));
-	}
-	
-	var imageCheckBox = document.createElement('input');
-	imageCheckBox.setAttribute('type', 'checkbox');
-	imageCheckBox.style.marginLeft = '30px';
-	
-	if (!isImage)
-	{
-		options.appendChild(imageCheckBox);
-		mxUtils.write(options, mxResources.get('image'));
-	}
-	
-	var retinaCheckBox = document.createElement('input');
-	retinaCheckBox.setAttribute('type', 'checkbox');
-	retinaCheckBox.style.marginLeft = '30px';
-	
-	if (isImage)
-	{
-		options.appendChild(retinaCheckBox);
-		mxUtils.write(options, mxResources.get('retina'));
-	}
-	
-	var lightboxCheckBox = document.createElement('input');
-	lightboxCheckBox.setAttribute('type', 'checkbox');
-	lightboxCheckBox.setAttribute('checked', 'checked');
-	lightboxCheckBox.defaultChecked = true;
-	lightboxCheckBox.style.marginLeft = '30px';
-	options.appendChild(lightboxCheckBox);
-	mxUtils.write(options, mxResources.get('lightbox'));
-	
-	var layersCheckBox = document.createElement('input');
-	layersCheckBox.setAttribute('type', 'checkbox');
-	layersCheckBox.style.marginLeft = '30px';
-	
-	var model = editorUi.editor.graph.getModel();
-	
-	if (model.getChildCount(model.getRoot()) > 1)
-	{
-		layersCheckBox.setAttribute('checked', 'checked');
-		layersCheckBox.defaultChecked = true;
-	}
-	else
-	{
-		layersCheckBox.setAttribute('disabled', 'disabled');
-	}
-
-	options.appendChild(layersCheckBox);
-	mxUtils.write(options, mxResources.get('layers'));
-	
-	div.appendChild(options);
-
-	function update(force)
-	{
-		if (isImage)
-		{
-			var bounds = editorUi.editor.graph.getGraphBounds();
-			
-			function doUpdate(dataUri)
-			{
-	   			var onclick = ' ';
-	   			var css = '';
-	   			
-	   			// Adds double click handling
-				if (lightboxCheckBox.checked)
-				{
-					// KNOWN: Message passing does not seem to work in IE11
-					onclick = " onclick=\"(function(img){if(img.wnd!=null&&!img.wnd.closed){img.wnd.focus();}else{var r=function(evt){if(evt.data=='ready'&&evt.source==img.wnd){img.wnd.postMessage(decodeURIComponent(" +
-						"img.getAttribute('src')),'*');window.removeEventListener('message',r);}};window.addEventListener('message',r);img.wnd=window.open('https://www.draw.io/?client=1&lightbox=1&chrome=0&edit=_blank" +
-						((layersCheckBox.checked) ? '&layers=1' : '') + "');}})(this);\"";
-					css += 'cursor:pointer;';
-				}
-	   			
-				if (fitCheckBox.checked)
-				{
-					css += 'max-width:100%;';
-				}
-				
-				var atts = '';
-				
-				if (retinaCheckBox.checked)
-				{
-					atts = ' width="' + Math.round(bounds.width) + '" height="' + Math.round(bounds.height) + '"';
-				}
-
-		   		textarea.value = '<img src="' + dataUri + '"' + atts +
-		   			((css != '') ? ' style="' + css + '"' : '') +
-		   			onclick + '/>';
-				textarea.focus();
-
 				if (mxClient.IS_FF || document.documentMode >= 5 || mxClient.IS_QUIRKS)
 				{
-					textarea.select();
+					text.select();
 				}
 				else
 				{
 					document.execCommand('selectAll', false, null);
 				}
-			};
-			
-			if (editorUi.isExportToCanvas())
-			{
-				var scale = 1;
-				var ignoreSelection = true;
-				textarea.value = mxResources.get('updatingDocument');
-
-				editorUi.exportToCanvas(mxUtils.bind(this, function(canvas)
-			   	{
-		   			var xml = (lightboxCheckBox.checked) ? editorUi.getFileData(true) : null;
-		   			var data = editorUi.createPngDataUri(canvas, xml);
-		   			doUpdate(data);
-			   	}), null, null, null, mxUtils.bind(this, function(e)
-			   	{
-					textarea.value = '';
-					editorUi.handleError({message: mxResources.get('unknownError')});
-			   	}), null, true, (retinaCheckBox.checked) ? 2 : 1, null, shadowCheckBox.checked);
 			}
 			else
 			{
-				var data = editorUi.getFileData(true);
-				
-				if (bounds.width * bounds.height <= MAX_AREA && data.length <= MAX_REQUEST_SIZE)
+				text.setAttribute('readonly', 'true');
+				text.value = result.substring(0, 340) + '... (' + mxResources.get('drawingTooLarge') + ')';
+			}
+		}, 0);
+	};
+	
+	var buttons = document.createElement('div');
+	buttons.style.position = 'absolute';
+	buttons.style.bottom = '36px';
+	buttons.style.right = '32px';
+	
+	var previewBtn = null;
+	
+	// Loads forever in IE9
+	if (!mxClient.IS_CHROMEAPP && !navigator.standalone && (validUrl ||
+		(mxClient.IS_SVG && (document.documentMode == null || document.documentMode > 9))))
+	{
+		previewBtn = mxUtils.button(mxResources.get((result.length < maxSize) ? 'preview' : 'openInNewWindow'), function()
+		{
+			var value = (result.length < maxSize) ? text.value : result;
+			
+			if (previewFn != null)
+			{
+				previewFn(value);
+			}
+			else
+			{
+				if (validUrl)
 				{
-					textarea.value = mxResources.get('updatingDocument');
-					var size = '';
-					
-					if (retinaCheckBox.checked)
+					try
 					{
-						size = '&w=' + Math.round(2 * bounds.width) +
-							'&h=' + Math.round(2 * bounds.height);
-					}
-					
-					var embed = (lightboxCheckBox.checked) ? '1' : '0';
-					var req = new mxXmlRequest(EXPORT_URL, 'format=png' +
-						'&base64=1&embedXml=' + embed + size + '&xml=' +
-						encodeURIComponent(data));
-					
-					// LATER: Updates on each change, add a delay
-					req.send(mxUtils.bind(this, function()
-					{
-						if (req.getStatus() == 200)
+						var win = window.open(value);
+						
+						if (timeout == null || timeout > 0)
 						{
-							// Fixes possible "incorrect function" for select() on
-							// DOM node which is no longer in document with IE11
-							if (document.body.contains(div))
+							window.setTimeout(mxUtils.bind(this, function()
 							{
-								doUpdate('data:image/png;base64,' + req.getText());
-							}
+								if (win != null && win.location.href != value)
+								{
+									win.close();
+									editorUi.handleError({message: mxResources.get('drawingTooLarge')});
+								}
+							}), timeout || 500);
 						}
-						else
-						{
-							textarea.value = '';
-							editorUi.handleError({message: mxResources.get('unknownError')});
-						}
-					}));
+					}
+					catch (e)
+					{
+						editorUi.handleError({message: e.message || mxResources.get('drawingTooLarge')});
+					}
 				}
 				else
 				{
-					textarea.value = '';
-					editorUi.handleError({message: mxResources.get('drawingTooLarge')}, mxResources.get('error'));
+					var wnd = window.open();
+					var doc = wnd.document;
+					doc.writeln('<html><head><title>' + encodeURIComponent(mxResources.get('preview')) +
+							'</title><meta charset="utf-8"></head>' +
+							'<body>' + result + '</body></html>');
+					doc.close();
 				}
 			}
-		}
-		else
-		{
-			var svgRoot = editorUi.editor.graph.getSvg();
-			
-			// Keeps hashtag links on same page
-			var links = svgRoot.getElementsByTagName('a');
-			
-			if (links != null)
-			{
-				for (var i = 0; i < links.length; i++)
-				{
-					var href = links[i].getAttribute('href');
-					
-					if (href != null && href.charAt(0) == '#' &&
-						links[i].getAttribute('target') == '_blank')
-					{
-						links[i].removeAttribute('target');
-					}
-				}
-			}
-			
-			if (lightboxCheckBox.checked)
-			{
-				svgRoot.setAttribute('content', editorUi.getFileData(true));
-			}
-			
-			// Adds shadow filter
-			if (shadowCheckBox.checked)
-			{
-				editorUi.editor.addSvgShadow(svgRoot);
-			}
-			
-			// SVG inside image tag
-			if (imageCheckBox.checked)
-			{
-	   			var onclick = ' ';
-	   			var css = '';
-	   			
-	   			// Adds double click handling
-				if (lightboxCheckBox.checked)
-				{
-					// KNOWN: Message passing does not seem to work in IE11
-					onclick = "onclick=\"(function(img){if(img.wnd!=null&&!img.wnd.closed){img.wnd.focus();}else{var r=function(evt){if(evt.data=='ready'&&evt.source==img.wnd){img.wnd.postMessage(decodeURIComponent(" +
-						"img.getAttribute('src')),'*');window.removeEventListener('message',r);}};window.addEventListener('message',r);img.wnd=window.open('https://www.draw.io/?client=1&lightbox=1&chrome=0&edit=_blank" +
-						((layersCheckBox.checked) ? '&layers=1' : '') + "');}})(this);\"";
-					css += 'cursor:pointer;';
-				}
-	   			
-				if (fitCheckBox.checked)
-				{
-					css += 'max-width:100%;';
-				}
-	   			
-	   			// Images inside IMG don't seem to work so embed them all
-				editorUi.convertImages(svgRoot, function(svgRoot)
-				{
-					textarea.value = '<img src="' + editorUi.createSvgDataUri(mxUtils.getXml(svgRoot)) + '"' +
-						((css != '') ? ' style="' + css + '"' : '') + onclick + '/>';
-				});
-			}
-			else
-			{
-				var css = '';
-				
-				// Adds double click handling
-				if (lightboxCheckBox.checked)
-				{
-					// KNOWN: Message passing does not seem to work in IE11
-					var js = "(function(svg){var src=window.event.target||window.event.srcElement;" +
-						// Ignores link events
-						"while (src!=null&&src.nodeName.toLowerCase()!='a'){src=src.parentNode;}if(src==null)" +
-						// Focus existing lightbox
-						"{if(svg.wnd!=null&&!svg.wnd.closed){svg.wnd.focus();}else{var r=function(evt){" +
-						// Message handling
-						"if(evt.data=='ready'&&evt.source==svg.wnd){svg.wnd.postMessage(decodeURIComponent(" +
-						"svg.getAttribute('content')),'*');window.removeEventListener('message',r);}};" +
-						"window.addEventListener('message',r);" +
-						// Opens lightbox window
-						"svg.wnd=window.open('https://www.draw.io/?client=1&lightbox=1&chrome=0&edit=_blank" +
-						((layersCheckBox.checked) ? '&layers=1' : '') + "');}}})(this);";
-					svgRoot.setAttribute('onclick', js);
-					css += 'cursor:pointer;';
-				}
-				
-				// Adds responsive size
-				if (fitCheckBox.checked)
-				{
-					var w = parseInt(svgRoot.getAttribute('width'));
-					var h = parseInt(svgRoot.getAttribute('height'));
-					svgRoot.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
-					css += 'max-width:100%;max-height:' + h + 'px;';
-					svgRoot.removeAttribute('height');
-				}
-				
-				if (css != '')
-				{
-					svgRoot.setAttribute('style', css);
-				}
-
-				textarea.value = mxUtils.getXml(svgRoot);
-			}
-
-			textarea.focus();
-			
-			if (mxClient.IS_FF || document.documentMode >= 5 || mxClient.IS_QUIRKS)
-			{
-				textarea.select();
-			}
-			else
-			{
-				document.execCommand('selectAll', false, null);
-			}
-		}
-	};
-	
-	this.init = function()
-	{
-		update();
-	};
-	
-	mxEvent.addListener(imageCheckBox, 'change', update);
-	mxEvent.addListener(retinaCheckBox, 'change', update);
-	mxEvent.addListener(shadowCheckBox, 'change', update);
-	mxEvent.addListener(fitCheckBox, 'change', update);
-	mxEvent.addListener(lightboxCheckBox, 'change', update);
-	mxEvent.addListener(layersCheckBox, 'change', update);
-	
-	var buttons = document.createElement('div');
-	buttons.style.paddingTop = '18px';
-	buttons.style.textAlign = 'right';
-	
-	if (!editorUi.isOffline() && !isImage)
-	{
-		var helpBtn = mxUtils.button(mxResources.get('help'), function()
-		{
-			window.open('https://support.draw.io/pages/viewpage.action?pageId=12222606');
-		});
-		
-		helpBtn.className = 'geBtn';	
-		buttons.appendChild(helpBtn);
-	}
-
-	// Loads forever in IE9
-	if (!mxClient.IS_CHROMEAPP && !navigator.standalone && mxClient.IS_SVG &&
-		(document.documentMode == null || document.documentMode > 9))
-	{
-		var previewBtn = mxUtils.button(mxResources.get('preview'), function()
-		{
-			var wnd = window.open();
-			var doc = wnd.document;
-			doc.writeln('<html><head><title>' + encodeURIComponent(mxResources.get('preview')) +
-					'</title><meta charset="utf-8"></head>' +
-					'<body>' + textarea.value + '</body></html>');
-			doc.close();
 		});
 		
 		previewBtn.className = 'geBtn';
 		buttons.appendChild(previewBtn);
 	}
+	
+	if (!validUrl || result.length > 7500)
+	{
+		var downloadBtn = mxUtils.button(mxResources.get('download'), function()
+		{
+			editorUi.saveData('embed.txt', 'txt', result, 'text/plain');
+		});
+		downloadBtn.className = 'geBtn';
+		buttons.appendChild(downloadBtn);
+	}
 
+	// Twitter-intent does not allow more characters, must be pasted manually
+	if (validUrl && !editorUi.isOffline())
+	{
+		if (result.length < maxFbSize)
+		{
+			var fbBtn = mxUtils.button('', function()
+			{
+				try
+				{
+					var url = 'https://www.facebook.com/sharer.php?p[url]=' +
+						encodeURIComponent(text.value);
+					window.open(url);
+				}
+				catch (e)
+				{
+					editorUi.handleError({message: e.message || mxResources.get('drawingTooLarge')});
+				}
+			});
+			
+			var img = document.createElement('img');
+			img.setAttribute('src', Editor.facebookImage);
+			img.setAttribute('border', '0');
+				
+			fbBtn.appendChild(img);
+			fbBtn.setAttribute('title', mxResources.get('facebook') + ' (' +
+					editorUi.formatFileSize(maxFbSize) + ' max)');
+			fbBtn.style.verticalAlign = 'bottom';
+			fbBtn.style.paddingTop = '4px';
+			fbBtn.style.minWidth = '46px'
+			fbBtn.className = 'geBtn';
+			buttons.appendChild(fbBtn);
+		}
+		
+		if (result.length < maxTwitterSize)
+		{
+			var tweetBtn = mxUtils.button('', function()
+			{
+				try
+				{
+					var url = 'https://twitter.com/intent/tweet?text=' + 
+						encodeURIComponent('Check out the diagram I made using @drawio') +
+						'&url=' + encodeURIComponent(text.value);
+					window.open(url);
+				}
+				catch (e)
+				{
+					editorUi.handleError({message: e.message || mxResources.get('drawingTooLarge')});
+				}
+			});
+			
+			var img = document.createElement('img');
+			img.setAttribute('src', Editor.tweetImage);
+			img.setAttribute('border', '0');
+			img.style.marginBottom = '5px'
+	
+			tweetBtn.appendChild(img);
+			tweetBtn.setAttribute('title', mxResources.get('twitter') + ' (' +
+					editorUi.formatFileSize(maxTwitterSize) + ' max)');
+			tweetBtn.style.verticalAlign = 'bottom';
+			tweetBtn.style.paddingTop = '4px';
+			tweetBtn.style.minWidth = '46px'
+			tweetBtn.className = 'geBtn';
+			buttons.appendChild(tweetBtn);
+		}
+	}
+	
 	var closeBtn = mxUtils.button(mxResources.get('close'), function()
 	{
 		editorUi.hideDialog();
 	});
-	
+
+	buttons.appendChild(closeBtn);
+
 	var copyBtn = mxUtils.button(mxResources.get('copy'), function()
 	{
-		textarea.focus();
+		text.focus();
 		
 		if (mxClient.IS_FF || document.documentMode >= 5 || mxClient.IS_QUIRKS)
 		{
-			textarea.select();
+			text.select();
 		}
 		else
 		{
@@ -1527,29 +956,35 @@ var EmbedSvgDialog = function(editorUi, isImage)
 		editorUi.alert(mxResources.get('copiedToClipboard'));
 	});
 
-	buttons.appendChild(closeBtn);
-
-	// Does not work in Safari and shows annoying dialog for IE11-
-	if (!mxClient.IS_SF && document.documentMode == null)
+	if (result.length < maxSize)
 	{
-		buttons.appendChild(copyBtn);
-		copyBtn.className = 'geBtn gePrimaryBtn';
-		closeBtn.className = 'geBtn';
+		// Does not work in Safari and shows annoying dialog for IE11-
+		if (!mxClient.IS_SF && document.documentMode == null)
+		{
+			buttons.appendChild(copyBtn);
+			copyBtn.className = 'geBtn gePrimaryBtn';
+			closeBtn.className = 'geBtn';
+		}
+		else
+		{
+			closeBtn.className = 'geBtn gePrimaryBtn';
+		}
 	}
 	else
 	{
-		closeBtn.className = 'geBtn gePrimaryBtn';
+		buttons.appendChild(previewBtn);
+		closeBtn.className = 'geBtn';
+		previewBtn.className = 'geBtn gePrimaryBtn';
 	}
 	
 	div.appendChild(buttons);
-	
 	this.container = div;
 };
 
 /**
  * Constructs a dialog for embedding the diagram in Google Sites.
  */
-var GoogleSitesDialog = function(editorUi)
+var GoogleSitesDialog = function(editorUi, publicUrl)
 {
 	var div = document.createElement('div');
 
@@ -1617,6 +1052,7 @@ var GoogleSitesDialog = function(editorUi)
 	urlInput.style.marginBottom = '8px';
 	urlInput.style.marginTop = '2px';
 	urlInput.style.width = '410px';
+	urlInput.value = publicUrl || '';
 	div.appendChild(urlInput);
 	mxUtils.br(div);
 
@@ -1777,17 +1213,6 @@ var GoogleSitesDialog = function(editorUi)
 		}
 	};
 	
-	// Tries to generate public image URL (only for Drive files)
-	update();
-	urlInput.setAttribute('placeholder', mxResources.get('loading') + '...');
-	
-	editorUi.getPublicUrl(file, function(url)
-	{
-		urlInput.setAttribute('placeholder', '');
-		urlInput.value = (url != null) ? url : '';
-		update();
-	});
-	
 	mxEvent.addListener(panCheckBox, 'change', update);
 	mxEvent.addListener(zoomCheckBox, 'change', update);
 	mxEvent.addListener(resizeCheckBox, 'change', update);
@@ -1799,6 +1224,7 @@ var GoogleSitesDialog = function(editorUi)
 	mxEvent.addListener(topInput, 'change', update);
 	mxEvent.addListener(borderInput, 'change', update);
 	mxEvent.addListener(urlInput, 'change', update);
+	update();
 	
 	mxEvent.addListener(gadgetInput, 'click', function()
 	{
@@ -1824,379 +1250,6 @@ var GoogleSitesDialog = function(editorUi)
 	});
 	closeBtn.className = 'geBtn gePrimaryBtn';
 	buttons.appendChild(closeBtn);
-	
-	div.appendChild(buttons);
-	
-	this.container = div;
-};
-
-/**
- * Constructs a dialog for embedding the diagram in Google Sites.
- */
-var IframeDialog = function(editorUi, image, link)
-{
-	var div = document.createElement('div');
-
-	var graph = editorUi.editor.graph;
-	var bounds = graph.getGraphBounds();
-	var scale = graph.view.scale;
-	var x0 = Math.floor(bounds.x / scale - graph.view.translate.x);
-	var y0 = Math.floor(bounds.y / scale - graph.view.translate.y);
-
-	mxUtils.write(div, mxResources.get((link) ? 'link' : 'mainEmbedNotice') + ': ');
-	mxUtils.br(div);
-	
-	var iframeInput = document.createElement('input');
-	iframeInput.setAttribute('type', 'text');
-	iframeInput.style.marginBottom = '8px';
-	iframeInput.style.marginTop = '2px';
-	iframeInput.style.width = '410px';
-	div.appendChild(iframeInput);
-	mxUtils.br(div);
-	
-	this.init = function()
-	{
-		if (iframeInput.getAttribute('disabled') != 'disabled')
-		{
-			iframeInput.focus();
-			
-			if (mxClient.IS_FF || document.documentMode >= 5 || mxClient.IS_QUIRKS)
-			{
-				iframeInput.select();
-			}
-			else
-			{
-				document.execCommand('selectAll', false, null);
-			}
-		}
-	};
-
-	var widthInput = document.createElement('input');
-	widthInput.setAttribute('type', 'text');
-	widthInput.style.marginRight = '16px';
-	widthInput.style.width = '60px';
-	widthInput.style.marginBottom = '8px';
-	widthInput.style.marginLeft = '4px';
-	widthInput.value = '100%';
-	
-	if (!image && !link)
-	{
-		mxUtils.write(div, mxResources.get('width') + ':');
-		div.appendChild(widthInput);
-	}
-	
-	var heightInput = document.createElement('input');
-	heightInput.setAttribute('type', 'text');
-	heightInput.style.width = '60px';
-	heightInput.style.marginLeft = '4px';
-	heightInput.value = (Math.ceil((bounds.y + bounds.height - graph.view.translate.y) / scale) + 2) + 'px';
-
-	var lightboxCheckBox = document.createElement('input');
-	lightboxCheckBox.setAttribute('type', 'checkbox');
-
-	var editCheckBox = document.createElement('input');
-	editCheckBox.setAttribute('type', 'checkbox');
-
-	var layersCheckBox = document.createElement('input');
-	layersCheckBox.setAttribute('type', 'checkbox');
-	
-	if (!image)
-	{
-		if (!link)
-		{
-			mxUtils.write(div, mxResources.get('height') + ':');
-			div.appendChild(heightInput);
-			
-			mxUtils.br(div);
-		}
-		
-		lightboxCheckBox.setAttribute('checked', 'checked');
-		lightboxCheckBox.defaultChecked = true;
-		div.appendChild(lightboxCheckBox);
-		mxUtils.write(div, mxResources.get('lightbox'));
-
-		layersCheckBox.style.marginLeft = '16px';
-		var model = editorUi.editor.graph.getModel();
-		
-		if (model.getChildCount(model.getRoot()) > 1)
-		{
-			layersCheckBox.setAttribute('checked', 'checked');
-			layersCheckBox.defaultChecked = true;
-		}
-		else
-		{
-			layersCheckBox.setAttribute('disabled', 'disabled');
-		}
-		
-		div.appendChild(layersCheckBox);
-		mxUtils.write(div, mxResources.get('layers'));
-
-		editCheckBox.style.marginLeft = '16px';
-		editCheckBox.setAttribute('checked', 'checked');
-		editCheckBox.defaultChecked = true;
-		div.appendChild(editCheckBox);
-		mxUtils.write(div, mxResources.get('edit'));
-		
-		mxUtils.br(div);
-	}
-	
-	var hr = document.createElement('hr');
-	hr.setAttribute('size', '1');
-	hr.style.marginBottom = '16px';
-	hr.style.marginTop = '16px';
-	div.appendChild(hr);
-
-	mxUtils.write(div, mxResources.get('publicDiagramUrl') + ':');
-	mxUtils.br(div);
-	
-	var urlInput = document.createElement('input');
-	urlInput.setAttribute('type', 'text');
-	urlInput.setAttribute('size', '28');
-	urlInput.style.marginBottom = '8px';
-	urlInput.style.marginTop = '2px';
-	urlInput.style.width = '410px';
-	div.appendChild(urlInput);
-	mxUtils.br(div);
-
-	var node = null;
-
-	var previewBtn = mxUtils.button(mxResources.get('preview'), function()
-	{
-		if (image || link)
-		{
-			window.open(iframeInput.value);
-		}
-		else
-		{
-			var wnd = window.open();
-			var doc = wnd.document;
-			
-			if (document.compatMode === 'CSS1Compat')
-			{
-				doc.writeln('<!DOCTYPE html>');
-			}
-			
-			doc.writeln('<head><title>' + encodeURIComponent(mxResources.get('preview')) +
-					'</title><meta charset="utf-8"></head>');
-			doc.writeln('<body>');
-			doc.writeln(iframeInput.value);
-			doc.writeln('</body>');
-			doc.writeln('</html>');
-			doc.close();
-		}
-	});
-	
-	previewBtn.className = 'geBtn';
-	
-	var copyBtn = mxUtils.button(mxResources.get('copy'), function()
-	{
-		iframeInput.focus();
-		
-		if (mxClient.IS_FF || document.documentMode >= 5 || mxClient.IS_QUIRKS)
-		{
-			iframeInput.select();
-		}
-		else
-		{
-			document.execCommand('selectAll', false, null);
-		}
-		
-		document.execCommand('copy');
-		editorUi.alert(mxResources.get('copiedToClipboard'));
-	});
-
-	var file = editorUi.getCurrentFile();
-	
-	function update()
-	{
-		var title = (file != null && file.getTitle() != null) ? file.getTitle() : this.defaultFilename;
-		
-		if (link && file != null && (urlInput.value != '' || file.constructor == DriveFile ||
-			file.constructor == DropboxFile || file.constructor == OneDriveFile))
-		{
-			previewBtn.removeAttribute('disabled');
-			copyBtn.removeAttribute('disabled');
-			var gurl = 'https://www.draw.io/?chrome=0';
-			
-			if (lightboxCheckBox.checked)
-			{
-				gurl += '&lightbox=1';
-			}
-			
-			if (editCheckBox.checked)
-			{
-				gurl += '&edit=' + encodeURIComponent(mxUtils.htmlEntities('https://www.draw.io/#' + file.getHash()));
-			}
-			
-			if (graph.foldingEnabled)
-			{
-				gurl += '&nav=1';
-			}
-			
-			if (layersCheckBox.checked)
-			{
-				gurl += '&layers=1';
-			}
-
-			if (urlInput.value != '')
-			{
-				gurl += '&url=' + encodeURIComponent(mxUtils.htmlEntities(urlInput.value));
-			}
-			else
-			{
-				gurl += '#' + file.getHash();
-			}
-			
-			iframeInput.value = gurl;
-			iframeInput.removeAttribute('disabled');
-		}
-		else if (urlInput.value != '')
-		{
-			previewBtn.removeAttribute('disabled');
-			copyBtn.removeAttribute('disabled');
-			var encUrl = encodeURIComponent(mxUtils.htmlEntities(urlInput.value));
-			
-			if (image)
-			{
-				var gurl = EXPORT_URL + '?format=png&url=' + encUrl;
-
-				iframeInput.value = gurl;
-			}
-			else
-			{
-				var gurl = 'https://www.draw.io/?chrome=0';
-				
-				if (lightboxCheckBox.checked)
-				{
-					gurl += '&lightbox=1';
-				}
-				
-				if (editCheckBox.checked)
-				{
-					gurl += '&edit=' + encUrl;
-				}
-				
-				if (graph.foldingEnabled)
-				{
-					gurl += '&nav=1';
-				}
-				
-				if (layersCheckBox.checked)
-				{
-					gurl += '&layers=1';
-				}
-				
-				gurl += '&url=' + encUrl;
-
-				iframeInput.value = '<iframe frameborder="0" style="width:' + widthInput.value + ';height:' +
-					heightInput.value + '" src="' + gurl + '"></iframe>';
-			}
-
-			iframeInput.removeAttribute('disabled');
-		}
-		else if (!image && !link && file != null && (file.constructor == DriveFile ||
-			file.constructor == DropboxFile || file.constructor == OneDriveFile))
-		{
-			previewBtn.removeAttribute('disabled');
-			copyBtn.removeAttribute('disabled');
-			var gurl = 'https://www.draw.io/?chrome=0';
-			
-			if (lightboxCheckBox.checked)
-			{
-				gurl += '&lightbox=1';
-			}
-			
-			if (editCheckBox.checked)
-			{
-				gurl += '&edit=' + encodeURIComponent(mxUtils.htmlEntities('https://www.draw.io/#' + file.getHash()));
-			}
-			
-			if (graph.foldingEnabled)
-			{
-				gurl += '&nav=1';
-			}
-			
-			if (layersCheckBox.checked)
-			{
-				gurl += '&layers=1';
-			}
-
-			gurl += '#' + file.getHash();
-			
-			iframeInput.value = '<iframe frameborder="0" style="width:' + widthInput.value + ';height:' +
-				heightInput.value + '" src="' + gurl + '"></iframe>';
-			iframeInput.removeAttribute('disabled');
-		}
-		else
-		{
-			previewBtn.setAttribute('disabled', 'disabled');
-			copyBtn.setAttribute('disabled', 'disabled');
-			iframeInput.value = mxResources.get('invalidPublicUrl');
-			iframeInput.setAttribute('disabled', 'disabled');
-		}
-	};
-	
-	// Tries to generate public image URL (only for Drive files)
-	update();
-	urlInput.setAttribute('placeholder', mxResources.get('loading') + '...');
-	
-	editorUi.getPublicUrl(file, function(url)
-	{
-		urlInput.setAttribute('placeholder', '');
-		urlInput.value = (url != null) ? url : '';
-		update();
-	});
-		
-	mxEvent.addListener(widthInput, 'change', update);
-	mxEvent.addListener(heightInput, 'change', update);
-	mxEvent.addListener(layersCheckBox, 'change', update);
-	mxEvent.addListener(lightboxCheckBox, 'change', update);
-	mxEvent.addListener(editCheckBox, 'change', update);
-	mxEvent.addListener(urlInput, 'change', update);
-	
-	mxEvent.addListener(iframeInput, 'click', function()
-	{
-		iframeInput.focus();
-		
-		if (mxClient.IS_FF || document.documentMode >= 5 || mxClient.IS_QUIRKS)
-		{
-			iframeInput.select();
-		}
-		else
-		{
-			document.execCommand('selectAll', false, null);
-		}
-	});
-	
-	var buttons = document.createElement('div');
-	buttons.style.paddingTop = '12px';
-	buttons.style.textAlign = 'right';
-
-	var closeBtn = mxUtils.button(mxResources.get('close'), function()
-	{
-		editorUi.hideDialog();
-	});
-
-	if (image || (!mxClient.IS_QUIRKS && !navigator.standalone &&
-		(!window.chrome || !chrome.app || !chrome.app.runtime) &&
-		(document.documentMode == null || document.documentMode >= 9)))
-	{
-		buttons.appendChild(previewBtn);
-	}
-	
-	buttons.appendChild(closeBtn);
-
-	// Does not work in Safari and shows annoying dialog for IE11-
-	if (!mxClient.IS_SF && document.documentMode == null)
-	{
-		buttons.appendChild(copyBtn);
-		copyBtn.className = 'geBtn gePrimaryBtn';
-		closeBtn.className = 'geBtn';
-	}
-	else
-	{
-		closeBtn.className = 'geBtn gePrimaryBtn';
-	}
 	
 	div.appendChild(buttons);
 	
@@ -2707,7 +1760,8 @@ var BackgroundImageDialog = function(editorUi, applyFn)
 	
 	if (!editorUi.isOffline())
 	{
-		if (typeof(google) != 'undefined' && typeof(google.picker) != 'undefined')
+		// Dialogs not allowed inside iframes
+		if (typeof(google) != 'undefined' && typeof(google.picker) != 'undefined' && window.self === window.top)
 		{
 			var searchBtn = mxUtils.button(mxResources.get('search'), function()
 			{
@@ -2795,11 +1849,137 @@ var BackgroundImageDialog = function(editorUi, applyFn)
  */
 var ParseDialog = function(editorUi, title)
 {
-	function parse(text, asList)
+	function parse(text, type)
 	{
 		var lines = text.split('\n');
 		
-		if (asList)
+		if (type == 'plantUmlPng' || type == 'plantUmlSvg')
+		{
+			var plantUmlServerUrl = (type == 'plantUmlPng') ? 'https://exp.draw.io/plantuml2/png/' :
+				'https://exp.draw.io/plantuml2/svg/';
+	    	var graph = editorUi.editor.graph;
+	    	
+	    	// TODO: Change server to return base64 & accept POST request
+	    	if (editorUi.spinner.spin(document.body, mxResources.get('inserting')))
+	    	{
+		    	function encode64(data) {
+					r = "";
+					for (i=0; i<data.length; i+=3) {
+				 		if (i+2==data.length) {
+							r +=append3bytes(data.charCodeAt(i), data.charCodeAt(i+1), 0);
+						} else if (i+1==data.length) {
+							r += append3bytes(data.charCodeAt(i), 0, 0);
+						} else {
+							r += append3bytes(data.charCodeAt(i), data.charCodeAt(i+1),
+								data.charCodeAt(i+2));
+						}
+					}
+					return r;
+				}
+				
+				function append3bytes(b1, b2, b3) {
+					c1 = b1 >> 2;
+					c2 = ((b1 & 0x3) << 4) | (b2 >> 4);
+					c3 = ((b2 & 0xF) << 2) | (b3 >> 6);
+					c4 = b3 & 0x3F;
+					r = "";
+					r += encode6bit(c1 & 0x3F);
+					r += encode6bit(c2 & 0x3F);
+					r += encode6bit(c3 & 0x3F);
+					r += encode6bit(c4 & 0x3F);
+					return r;
+				}
+				
+				function encode6bit(b) {
+					if (b < 10) {
+				 		return String.fromCharCode(48 + b);
+					}
+					b -= 10;
+					if (b < 26) {
+				 		return String.fromCharCode(65 + b);
+					}
+					b -= 26;
+					if (b < 26) {
+				 		return String.fromCharCode(97 + b);
+					}
+					b -= 26;
+					if (b == 0) {
+				 		return '-';
+					}
+					if (b == 1) {
+				 		return '_';
+					}
+					return '?';
+				}
+			
+				// TODO: Remove unescape, use btoa for compatibility with graph.compress
+				function compress(s) 
+				{
+				  return encode64(graph.bytesToString(pako.deflateRaw(unescape(encodeURIComponent(s)))));
+				}
+			
+				var xhr = new XMLHttpRequest();
+				xhr.open('GET', plantUmlServerUrl + compress(text), true);
+				xhr.responseType = 'blob';
+				
+				xhr.onload = function(e) 
+				{
+				  if (this.status >= 200 && this.status < 300)
+				  {
+				    var reader = new FileReader();
+				    reader.readAsDataURL(this.response); 
+				    reader.onload = function(e) 
+				    {
+				    	var img = new Image();
+				    	img.onload = function()
+				    	{
+				    		editorUi.spinner.stop();
+				    		
+				    		graph.getModel().beginUpdate();
+							try
+							{
+								var view = graph.view;
+								var bds = graph.getGraphBounds();
+								
+								// Computes unscaled, untranslated graph bounds
+								var x = Math.ceil(Math.max(0, bds.x / view.scale - view.translate.x) + 4 * graph.gridSize);
+								var y = Math.ceil(Math.max(0, (bds.y + bds.height) / view.scale - view.translate.y) + 4 * graph.gridSize);
+
+					    		cell = graph.insertVertex(null, null, text, graph.snap(x), graph.snap(y),
+									img.width, img.height, 'shape=image;noLabel=1;verticalAlign=top;aspect=fixed;imageAspect=0;' +
+									'image=' + editorUi.convertDataUri(e.target.result) + ';');
+							}
+							finally
+							{
+								graph.getModel().endUpdate();
+							}
+							
+							graph.setSelectionCell(cell);
+				           	graph.scrollCellToVisible(graph.getSelectionCell());
+				    	};
+				    	img.src = e.target.result;
+				    };
+				    reader.onerror = function(e)
+				    {
+				    	editorUi.handleError(e);
+				    };
+				  }
+				  else 
+				  {
+					  editorUi.spinner.stop();
+					  editorUi.handleError(e);
+				  }
+				};
+				
+				xhr.onerror = function(e)
+				{
+					editorUi.handleError(e);
+				};
+				 
+				xhr.send();
+	    	}
+		}
+		else if (type == 'list')
 		{
 			if (lines.length > 0)
 			{
@@ -2956,19 +2136,45 @@ var ParseDialog = function(editorUi, title)
 	textarea.style.width = '100%';
 	textarea.style.height = '354px';
 	textarea.style.marginBottom = '16px';
-		
-	var diagramCheckBox = document.createElement('input');
-	diagramCheckBox.setAttribute('type', 'checkbox');
 	
+	var typeSelect = document.createElement('select');
+
+	var listOption = document.createElement('option');
+	listOption.setAttribute('value', 'list');
+	listOption.setAttribute('selected', 'selected');
+	mxUtils.write(listOption, mxResources.get('list'));
+	typeSelect.appendChild(listOption);
+	
+	var diagramOption = document.createElement('option');
+	diagramOption.setAttribute('value', 'diagram');
+	mxUtils.write(diagramOption, mxResources.get('diagram'));
+	typeSelect.appendChild(diagramOption);
+		
+	var plantUmlSvgOption = document.createElement('option');
+	plantUmlSvgOption.setAttribute('value', 'plantUmlSvg');
+	mxUtils.write(plantUmlSvgOption, mxResources.get('plantUml') + ' (' + mxResources.get('formatSvg') + ')');
+	
+	var plantUmlPngOption = document.createElement('option');
+	plantUmlPngOption.setAttribute('value', 'plantUmlPng');
+	mxUtils.write(plantUmlPngOption, mxResources.get('plantUml') + ' (' + mxResources.get('formatPng') + ')');
+	
+	// Disabled for invalid hosts via CORS headers
+	if (/.*\.draw\.io$/.test(window.location.hostname) && Graph.fileSupport && !editorUi.isOffline())
+	{
+		typeSelect.appendChild(plantUmlSvgOption);
+		typeSelect.appendChild(plantUmlPngOption);
+	}
+
 	function getDefaultValue()
 	{
-		return  (!diagramCheckBox.checked) ?
+		return  (typeSelect.value == 'list') ?
 			'Person\n-name: String\n-birthDate: Date\n--\n+getName(): String\n+setName(String): void\n+isBirthday(): boolean' :
-			';Example:\na->b\nb->c\nc->a\n';
+			((typeSelect.value == 'plantUmlPng') ? '@startuml\nskinparam backgroundcolor transparent\nskinparam shadowing false\nAlice -> Bob: Authentication Request\nBob --> Alice: Authentication Response\n\nAlice -> Bob: Another authentication Request\nAlice <-- Bob: another authentication Response\n@enduml' :
+			((typeSelect.value == 'plantUmlSvg') ? '@startuml\nskinparam shadowing false\nAlice -> Bob: Authentication Request\nBob --> Alice: Authentication Response\n\nAlice -> Bob: Another authentication Request\nAlice <-- Bob: another authentication Response\n@enduml' :
+			';Example:\na->b\nb->c\nc->a\n'));
 	};
 	
 	var defaultValue = getDefaultValue();
-
 	textarea.value = defaultValue;
 	div.appendChild(textarea);
 	
@@ -3006,9 +2212,9 @@ var ParseDialog = function(editorUi, title)
 		textarea.addEventListener('drop', handleDrop, false);
 	}
 
-	div.appendChild(diagramCheckBox);
+	div.appendChild(typeSelect);
 	
-	mxEvent.addListener(diagramCheckBox, 'change', function()
+	mxEvent.addListener(typeSelect, 'change', function()
 	{
 		var newDefaultValue = getDefaultValue();
 		
@@ -3018,11 +2224,6 @@ var ParseDialog = function(editorUi, title)
 			textarea.value = defaultValue;
 		}
 	});
-	
-	var span = document.createElement('span');
-	mxUtils.write(span, ' ' + mxResources.get('diagram'));
-	span.style.marginRight = '10px';
-	div.appendChild(span);
 	
 	var cancelBtn = mxUtils.button(mxResources.get('close'), function()
 	{
@@ -3049,7 +2250,7 @@ var ParseDialog = function(editorUi, title)
 	var okBtn = mxUtils.button(mxResources.get('insert'), function()
 	{
 		editorUi.hideDialog();
-		parse(textarea.value, !diagramCheckBox.checked);
+		parse(textarea.value, typeSelect.value);
 	});
 	div.appendChild(okBtn);
 	
@@ -3688,44 +2889,47 @@ var CreateDialog = function(editorUi, title, createFn, cancelFn, dlgTitle, btnLa
 	var serviceSelect = document.createElement('select');
 	serviceSelect.style.marginLeft = '10px';
 
-	if (typeof window.DriveClient === 'function')
+	if (!editorUi.isOfflineApp() && !editorUi.isOffline())
 	{
-		var googleOption = document.createElement('option');
-		googleOption.setAttribute('value', App.MODE_GOOGLE);
-		mxUtils.write(googleOption, mxResources.get('googleDrive'));
-		serviceSelect.appendChild(googleOption);
-		
-//		addLogo(IMAGE_PATH + '/google-drive-logo.svg', mxResources.get('googleDrive'), App.MODE_GOOGLE, 'drive');
-	}
-
-	if (typeof window.DropboxClient === 'function')
-	{
-		var dropboxOption = document.createElement('option');
-		dropboxOption.setAttribute('value', App.MODE_DROPBOX);
-		mxUtils.write(dropboxOption, mxResources.get('dropbox'));
-		serviceSelect.appendChild(dropboxOption);
-		
-		if (editorUi.mode == App.MODE_DROPBOX)
+		if (typeof window.DriveClient === 'function')
 		{
-			dropboxOption.setAttribute('selected', 'selected');
+			var googleOption = document.createElement('option');
+			googleOption.setAttribute('value', App.MODE_GOOGLE);
+			mxUtils.write(googleOption, mxResources.get('googleDrive'));
+			serviceSelect.appendChild(googleOption);
+			
+//			addLogo(IMAGE_PATH + '/google-drive-logo.svg', mxResources.get('googleDrive'), App.MODE_GOOGLE, 'drive');
 		}
-		
-//		addLogo(IMAGE_PATH + '/dropbox-logo.svg', mxResources.get('dropbox'), App.MODE_DROPBOX, 'dropbox');
-	}
-
-	if (typeof window.OneDriveClient === 'function')
-	{
-		var oneDriveOption = document.createElement('option');
-		oneDriveOption.setAttribute('value', App.MODE_ONEDRIVE);
-		mxUtils.write(oneDriveOption, mxResources.get('oneDrive'));
-		serviceSelect.appendChild(oneDriveOption);
-		
-		if (editorUi.mode == App.MODE_ONEDRIVE)
+	
+		if (typeof window.DropboxClient === 'function')
 		{
-			oneDriveOption.setAttribute('selected', 'selected');
+			var dropboxOption = document.createElement('option');
+			dropboxOption.setAttribute('value', App.MODE_DROPBOX);
+			mxUtils.write(dropboxOption, mxResources.get('dropbox'));
+			serviceSelect.appendChild(dropboxOption);
+			
+			if (editorUi.mode == App.MODE_DROPBOX)
+			{
+				dropboxOption.setAttribute('selected', 'selected');
+			}
+			
+//			addLogo(IMAGE_PATH + '/dropbox-logo.svg', mxResources.get('dropbox'), App.MODE_DROPBOX, 'dropbox');
 		}
-		
-//		addLogo(IMAGE_PATH + '/onedrive-logo.svg', mxResources.get('oneDrive'), App.MODE_ONEDRIVE, 'oneDrive');
+	
+		if (typeof window.OneDriveClient === 'function')
+		{
+			var oneDriveOption = document.createElement('option');
+			oneDriveOption.setAttribute('value', App.MODE_ONEDRIVE);
+			mxUtils.write(oneDriveOption, mxResources.get('oneDrive'));
+			serviceSelect.appendChild(oneDriveOption);
+			
+			if (editorUi.mode == App.MODE_ONEDRIVE)
+			{
+				oneDriveOption.setAttribute('selected', 'selected');
+			}
+			
+			addLogo(IMAGE_PATH + '/onedrive-logo.svg', mxResources.get('oneDrive'), App.MODE_ONEDRIVE, 'oneDrive');
+		}
 	}
 	
 	if (!Editor.useLocalStorage || urlParams['storage'] == 'device' ||
@@ -3744,7 +2948,7 @@ var CreateDialog = function(editorUi, title, createFn, cancelFn, dlgTitle, btnLa
 		if (showDeviceButton)
 		{
 			mxUtils.br(buttons);
-			addLogo(IMAGE_PATH + '/osa_drive-harddisk.png', mxResources.get('device'), App.MODE_DEVICE);
+//			addLogo(IMAGE_PATH + '/osa_drive-harddisk.png', mxResources.get('device'), App.MODE_DEVICE);
 		}
 	}
 	
@@ -4214,48 +3418,48 @@ var ImageDialog = function(editorUi, title, initialValue, fn, ignoreExisting, co
         linkInput.focus();
 	};
 
-	if (typeof(google) != 'undefined' && typeof(google.picker) != 'undefined')
+	if (Graph.fileSupport)
 	{
-		if (Graph.fileSupport)
-		{
-			var fileInput = document.createElement('input');
-			fileInput.setAttribute('multiple', 'multiple');
-			fileInput.setAttribute('type', 'file');
-			
-			if (document.documentMode == null)
-			{
-				mxEvent.addListener(fileInput, 'change', function(evt)
-				{
-			    	editorUi.importFiles(fileInput.files, 0, 0, editorUi.maxImageSize, function(data, mimeType, x, y, w, h)
-			    	{
-			    		apply(data);
-			    	}, function()
-			    	{
-			    		// No post processing
-			    	}, function(file)
-			    	{
-			    		// Handles only images
-			    		return file.type.substring(0, 6) == 'image/';
-			    	}, function(queue)
-			    	{
-			    		// Invokes elements of queue in order
-			    		for (var i = 0; i < queue.length; i++)
-			    		{
-			    			queue[i]();
-			    		}
-			    	}, true);
-				});
-				
-				var btn = mxUtils.button(mxResources.get('open'), function()
-				{
-					fileInput.click();
-				});
-				btn.className = 'geBtn';
-				
-				btns.appendChild(btn);
-			}
-		}
+		var fileInput = document.createElement('input');
+		fileInput.setAttribute('multiple', 'multiple');
+		fileInput.setAttribute('type', 'file');
 		
+		if (document.documentMode == null)
+		{
+			mxEvent.addListener(fileInput, 'change', function(evt)
+			{
+		    	editorUi.importFiles(fileInput.files, 0, 0, editorUi.maxImageSize, function(data, mimeType, x, y, w, h)
+		    	{
+		    		apply(data);
+		    	}, function()
+		    	{
+		    		// No post processing
+		    	}, function(file)
+		    	{
+		    		// Handles only images
+		    		return file.type.substring(0, 6) == 'image/';
+		    	}, function(queue)
+		    	{
+		    		// Invokes elements of queue in order
+		    		for (var i = 0; i < queue.length; i++)
+		    		{
+		    			queue[i]();
+		    		}
+		    	}, true);
+			});
+			
+			var btn = mxUtils.button(mxResources.get('open'), function()
+			{
+				fileInput.click();
+			});
+			btn.className = 'geBtn';
+			
+			btns.appendChild(btn);
+		}
+	}
+
+	if (typeof(google) != 'undefined' && typeof(google.picker) != 'undefined' && window.self === window.top)
+	{
 		var searchBtn = mxUtils.button(mxResources.get('search'), function()
 		{
 			// Creates one picker and reuses it to avoid polluting the DOM
@@ -4602,7 +3806,7 @@ PrintDialog.prototype.create = function(editorUi)
 	
 	// Buttons
 	var buttons = document.createElement('div');
-	buttons.style.cssText = 'text-align:right;margin:42px 0 0 0;';
+	buttons.style.cssText = 'text-align:right;margin:62px 0 0 0;';
 	
 	// Overall scale for print-out to account for print borders in dialogs etc
 	function preview(print)
@@ -4870,6 +4074,17 @@ PrintDialog.prototype.create = function(editorUi)
 		buttons.appendChild(cancelBtn);
 	}
 	
+	if (!editorUi.isOffline())
+	{
+		var helpBtn = mxUtils.button(mxResources.get('help'), function()
+		{
+			window.open('https://desk.draw.io/support/solutions/articles/16000048947-how-to-print-');
+		});
+		
+		helpBtn.className = 'geBtn';
+		buttons.appendChild(helpBtn);
+	}
+	
 	if (!mxClient.IS_CHROMEAPP)
 	{
 		var previewBtn = mxUtils.button(mxResources.get('preview'), function()
@@ -5078,7 +4293,7 @@ var LinkDialog = function(editorUi, initialValue, btnLabel, fn)
 		linkInput.focus();
 	};
 
-	if (typeof(google) != 'undefined' && typeof(google.picker) != 'undefined')
+	if (typeof(google) != 'undefined' && typeof(google.picker) != 'undefined' && editorUi.drive != null)
 	{
 		var gpBtn = mxUtils.button(mxResources.get('googlePlus'), function()
 		{
@@ -5240,7 +4455,7 @@ var AboutDialog = function(editorUi)
 
 	var small = document.createElement('small');
 	small.style.color = '#505050';
-	small.innerHTML = '&copy; 2005-2016 <a href="https://www.jgraph.com/" style="color:inherit;" target="_blank">JGraph Ltd</a>.<br>All Rights Reserved.';
+	small.innerHTML = '&copy; 2005-2017 <a href="https://www.jgraph.com/" style="color:inherit;" target="_blank">JGraph Ltd</a>.<br>All Rights Reserved.';
 	div.appendChild(small);
 	
 	mxEvent.addListener(div, 'click', function(e)
@@ -5293,7 +4508,8 @@ var FeedbackDialog = function(editorUi)
 			
 			if (editorUi.spinner.spin(document.body))
 			{
-				mxUtils.post('/email', 'email=' + encodeURIComponent(email.value) +
+				var postUrl = FeedbackDialog.feedbackUrl ? FeedbackDialog.feedbackUrl : '/email';
+				mxUtils.post(postUrl, 'email=' + encodeURIComponent(email.value) +
 						'&version=' + encodeURIComponent(EditorUi.VERSION) +
 						'&url=' + encodeURIComponent(window.location.href) +
 						'&body=' + encodeURIComponent('Feedback:\n' + textarea.value + diagram),
@@ -5713,8 +4929,8 @@ var RevisionDialog = function(editorUi, revs)
 	
 	var currentElt = null;
 	
-	if (file == null || (editorUi.drive == null && file.constructor == DriveFile) ||
-		(editorUi.dropbox == null && file.constructor == DropboxFile))
+	if (file == null || (editorUi.drive == null && file.constructor == window.DriveFile) ||
+		(editorUi.dropbox == null && file.constructor == window.DropboxFile))
 	{
 		container.style.display = 'none';
 		tb.style.display = 'none';
@@ -6319,6 +5535,410 @@ var DraftDialog = function(editorUi, title, xml, editFn, discardFn, editLabel, d
 	div.appendChild(tb);
 
 	this.container = div;
+};
+
+/**
+ * 
+ */
+var FindWindow = function(ui, x, y, w, h)
+{
+	var action = ui.actions.get('find');
+	var graph = ui.editor.graph;
+	var lastSearch = null;
+	var lastFound = null;
+
+	var div = document.createElement('div');
+	div.style.userSelect = 'none';
+	div.style.overflow = 'hidden';
+	div.style.padding = '10px';
+	div.style.height = '100%';
+
+	var searchInput = document.createElement('input');
+	searchInput.setAttribute('placeholder', mxResources.get('find'));
+	searchInput.setAttribute('type', 'text');
+	searchInput.style.marginTop = '4px';
+	searchInput.style.marginBottom = '6px';
+	searchInput.style.width = '170px';
+	searchInput.style.fontSize = '12px';
+	searchInput.style.borderRadius = '4px';
+	searchInput.style.padding = '6px';
+	div.appendChild(searchInput);
+	
+	var regexInput = document.createElement('input');
+	regexInput.setAttribute('type', 'checkbox');
+	div.appendChild(regexInput);
+	
+	mxUtils.write(div, mxResources.get('regularExpression'));
+
+	var tmp = document.createElement('div');
+	
+	function testMeta(re, cell)
+	{
+		if (typeof cell.value === 'object' && cell.value.attributes != null)
+		{
+			var attrs = cell.value.attributes;
+			
+			for (var i = 0; i < attrs.length; i++)
+			{
+				if (attrs[i].nodeName != 'label' && re.test(attrs[i].nodeValue.toLowerCase()))
+				{
+					return true;
+				}	
+			}
+		}
+		
+		return false;
+	};
+	
+	function search()
+	{
+		var cells = graph.model.getDescendants(graph.model.getRoot());
+		var search = searchInput.value.toLowerCase();
+		var re = (regexInput.checked) ? new RegExp(search) : null;
+		var firstMatch = null;
+		
+		if (lastSearch != search)
+		{
+			lastSearch = search;
+			lastFound = null;
+		}
+
+		var active = lastFound == null;
+		
+		if (graph.isEnabled() && search.length > 0)
+		{
+			for (var i = 0; i < cells.length; i++)
+			{
+				var state = graph.view.getState(cells[i]);
+				
+				if (state != null && state.cell.value != null && (active || firstMatch == null) &&
+					(graph.model.isVertex(state.cell) || graph.model.isEdge(state.cell)))
+				{
+					if (graph.isHtmlLabel(state.cell))
+					{
+						tmp.innerHTML = graph.getLabel(state.cell);
+						label = mxUtils.extractTextWithWhitespace([tmp]);
+					}
+					else
+					{					
+						label = graph.getLabel(state.cell);
+					}
+		
+					label = mxUtils.trim(label.replace(/[\x00-\x1F\x7F-\x9F]|\s+/g, ' ')).toLowerCase();
+					
+					if ((re == null && label.substring(0, search.length) === search) ||
+						(re != null && (re.test(label) || testMeta(re, state.cell))))
+					{
+						if (active)
+						{
+							firstMatch = state;
+						
+							break;
+						}
+						else if (firstMatch == null)
+						{
+							firstMatch = state;
+						}
+					}
+				}
+	
+				active = active || state == lastFound;
+			}
+		}
+					
+		if (firstMatch != null)
+		{
+			lastFound = firstMatch;
+			graph.setSelectionCell(lastFound.cell);
+			graph.scrollCellToVisible(lastFound.cell);
+		}
+		else
+		{
+			graph.clearSelection();
+		}
+		
+		return !graph.isEnabled() || search.length == 0 || firstMatch != null;
+	};
+
+	mxUtils.br(div);
+
+	var resetBtn = mxUtils.button(mxResources.get('reset'), function()
+	{
+		searchInput.value = '';
+		searchInput.style.backgroundColor = '';
+		lastFound = null;
+		lastSearch = null;
+		searchInput.focus();
+	});
+	
+	resetBtn.setAttribute('title', mxResources.get('reset'));
+	resetBtn.style.marginTop = '6px';
+	resetBtn.style.marginRight = '4px';
+	resetBtn.style.backgroundColor = '#f5f5f5';
+	resetBtn.style.backgroundImage = 'none';
+	resetBtn.className = 'geBtn';
+	
+	div.appendChild(resetBtn);
+
+	var btn = mxUtils.button(mxResources.get('find'), function()
+	{
+		try
+		{
+			searchInput.style.backgroundColor = search() ? '' : '#ffcfcf';
+		}
+		catch (e)
+		{
+			ui.handleError(e);	
+		}
+	});
+	
+	btn.setAttribute('title', mxResources.get('find') + ' (Enter)');
+	btn.style.marginTop = '6px';
+	btn.style.backgroundColor = '#4d90fe';
+	btn.style.backgroundImage = 'none';
+	btn.className = 'geBtn gePrimaryBtn';
+	
+	div.appendChild(btn);
+	
+	mxEvent.addListener(searchInput, 'keyup', function(evt)
+	{
+		// Ctrl or Cmd keys
+		if (evt.keyCode == 91 || evt.keyCode == 17)
+		{
+			// Workaround for lost focus on show
+			mxEvent.consume(evt);
+		}
+		else if (evt.keyCode == 27)
+		{
+			action.funct();
+		}
+		else if (lastSearch != searchInput.value.toLowerCase() || evt.keyCode == 13)
+		{
+			try
+			{
+				searchInput.style.backgroundColor = search() ? '' : '#ffcfcf';
+			}
+			catch (e)
+			{
+				searchInput.style.backgroundColor = '#ffcfcf';
+			}
+		}
+	});
+
+	mxEvent.addListener(div, 'keydown', function(evt)
+	{
+		if (evt.keyCode == 70 && ui.keyHandler.isControlDown(evt) && !mxEvent.isShiftDown(evt))
+		{
+			action.funct();
+			mxEvent.consume(evt);
+		}
+	});
+
+	this.window = new mxWindow(mxResources.get('find'), div, x, y, w, h, true, true);
+	this.window.destroyOnClose = false;
+	this.window.setMaximizable(false);
+	this.window.setResizable(false);
+	this.window.setClosable(true);
+	
+	this.window.addListener('show', mxUtils.bind(this, function()
+	{
+		if (this.window.isVisible())
+		{
+			searchInput.focus();
+			
+			if (mxClient.IS_FF || document.documentMode >= 5 || mxClient.IS_QUIRKS)
+			{
+				searchInput.select();
+			}
+			else
+			{
+				document.execCommand('selectAll', false, null);
+			}
+		}
+		else
+		{
+			graph.container.focus();
+		}
+	}));
+};
+
+/**
+ * 
+ */
+var TagsWindow = function(editorUi, x, y, w, h)
+{
+	var graph = editorUi.editor.graph;
+	var propertyName = 'tags';
+
+	var div = document.createElement('div');
+	div.style.userSelect = 'none';
+	div.style.overflow = 'hidden';
+	div.style.padding = '10px';
+	div.style.height = '100%';
+	
+	var searchInput = document.createElement('input');
+	searchInput.setAttribute('placeholder', mxResources.get('allTags'));
+	searchInput.setAttribute('type', 'text');
+	searchInput.style.marginTop = '4px';
+	searchInput.style.width = '240px';
+	searchInput.style.fontSize = '12px';
+	searchInput.style.borderRadius = '4px';
+	searchInput.style.padding = '6px';
+	div.appendChild(searchInput);
+	
+	mxEvent.addListener(searchInput, 'dblclick', function()
+	{
+		var dlg = new FilenameDialog(editorUi, propertyName, mxResources.get('ok'), mxUtils.bind(this, function(name)
+		{
+			if (name != null && name.length > 0)
+			{
+				propertyName = name;
+			}
+		}), mxResources.get('enterPropertyName'));
+		editorUi.showDialog(dlg.container, 300, 80, true, true);
+		dlg.init();
+	});
+	
+	searchInput.setAttribute('title', mxResources.get('doubleClickChangeProperty'));
+
+	function searchCells(cells)
+	{
+		cells = (cells != null) ? cells : graph.model.getDescendants(graph.model.getRoot());
+		var tagList = searchInput.value.split(' ');
+		var result = [];
+		
+		for (var i = 0; i < cells.length; i++)
+		{
+			if (graph.model.isVertex(cells[i]) || graph.model.isEdge(cells[i]))
+			{
+				var tags = (cells[i].value != null && typeof(cells[i].value) == 'object') ?
+					mxUtils.trim(cells[i].value.getAttribute(propertyName) || '') : '';
+				var match = true;
+
+				if (tags.length > 0)
+				{
+					var tmp = tags.toLowerCase().split(' ');
+					
+					for (var j = 0; j < tagList.length && match; j++)
+					{
+						var tag = mxUtils.trim(tagList[j]).toLowerCase();
+						
+						match = match && (tag.length == 0 || mxUtils.indexOf(tmp, tag) >= 0);
+					}
+				}
+				else
+				{
+					match = mxUtils.trim(searchInput.value).length == 0;
+				}
+				
+				if (match)
+				{
+					result.push(cells[i]);
+				}
+			}
+		}
+		
+		return result;
+	};
+
+	function setCellsVisible(cells, visible)
+	{	
+		graph.model.beginUpdate();
+		try
+		{
+			for (var i = 0; i < cells.length; i++)
+			{
+				graph.model.setVisible(cells[i], visible);
+			}
+		}
+		finally
+		{
+			graph.model.endUpdate();
+		}
+	};
+	
+	mxUtils.br(div);
+
+	var hideBtn = mxUtils.button(mxResources.get('hide'), function()
+	{
+		setCellsVisible(searchCells(), false);
+	});
+	
+	hideBtn.setAttribute('title', mxResources.get('hide'));
+	hideBtn.style.marginTop = '8px';
+	hideBtn.style.marginRight = '4px';
+	hideBtn.style.backgroundColor = '#f5f5f5';
+	hideBtn.style.backgroundImage = 'none';
+	hideBtn.className = 'geBtn';
+	
+	div.appendChild(hideBtn);
+
+	var showBtn = mxUtils.button(mxResources.get('show'), function()
+	{
+		var cells = searchCells();
+		setCellsVisible(cells, true);
+		graph.setSelectionCells(cells);
+	});
+	
+	showBtn.setAttribute('title', mxResources.get('show'));
+	showBtn.style.marginTop = '8px';
+	showBtn.style.marginRight = '4px';
+	showBtn.style.backgroundColor = '#f5f5f5';
+	showBtn.style.backgroundImage = 'none';
+	showBtn.className = 'geBtn';
+	
+	div.appendChild(showBtn);
+	
+	var action = editorUi.actions.get('tags');
+
+	var btn = mxUtils.button(mxResources.get('close'), function()
+	{
+		action.funct();
+	});
+	
+	btn.setAttribute('title', mxResources.get('close') + ' (Enter/Esc)');
+	btn.style.marginTop = '8px';
+	btn.style.backgroundColor = '#4d90fe';
+	btn.style.backgroundImage = 'none';
+	btn.className = 'geBtn gePrimaryBtn';
+	
+	div.appendChild(btn);
+		
+	mxEvent.addListener(searchInput, 'keyup', function(evt)
+	{
+		// Ctrl or Cmd keys
+		if (evt.keyCode == 13 || evt.keyCode == 27)
+		{
+			action.funct();
+		}
+	});
+
+	this.window = new mxWindow(mxResources.get('tags'), div, x, y, w, h, true, true);
+	this.window.destroyOnClose = false;
+	this.window.setMaximizable(false);
+	this.window.setResizable(false);
+	this.window.setClosable(true);
+	
+	this.window.addListener('show', mxUtils.bind(this, function()
+	{
+		if (this.window.isVisible())
+		{
+			searchInput.focus();
+			
+			if (mxClient.IS_FF || document.documentMode >= 5 || mxClient.IS_QUIRKS)
+			{
+				searchInput.select();
+			}
+			else
+			{
+				document.execCommand('selectAll', false, null);
+			}
+		}
+		else
+		{
+			graph.container.focus();
+		}
+	}));
 };
 
 /**
@@ -7843,7 +7463,8 @@ var LibraryDialog = function(editorUi, name, library, initialImages, file, mode)
 							for (var i = 0; i < images.length; i++)
 							{
 								if ((images[i].data != null && images[i].data == dataParam) ||
-									(images[i].xml != null && images[i].xml == imgParam.xml))
+									(images[i].xml != null && imgParam != null &&
+									images[i].xml == imgParam.xml))
 								{
 									images.splice(i, 1);
 									break;
@@ -8098,7 +7719,6 @@ var LibraryDialog = function(editorUi, name, library, initialImages, file, mode)
 		catch (e)
 		{
 			// ignore
-			console.log('e', e);
 		}
 		
 		return null;
@@ -8167,6 +7787,7 @@ var LibraryDialog = function(editorUi, name, library, initialImages, file, mode)
 	    	{
 	    		addButton(data, mimeType, x, y, w, h, img, 'fixed', (mxEvent.isAltDown(evt)) ?
 		    		null : img.substring(0, img.lastIndexOf('.')).replace(/_/g, ' '));
+				div.scrollTop = div.scrollHeight;
 	    	});
 		}
 	    else if (mxUtils.indexOf(evt.dataTransfer.types, 'text/uri-list') >= 0)
@@ -8179,6 +7800,7 @@ var LibraryDialog = function(editorUi, name, library, initialImages, file, mode)
 				editorUi.loadImage(uri, function(img)
 				{
 					addButton(uri, null, 0, 0, img.width, img.height);
+					div.scrollTop = div.scrollHeight;
 				});
 			}
 	    }
@@ -8255,10 +7877,12 @@ var LibraryDialog = function(editorUi, name, library, initialImages, file, mode)
 	    	editorUi.importFiles(fileInput.files, 0, 0, editorUi.maxImageSize, function(data, mimeType, x, y, w, h, img)
 	    	{
 	    		addButton(data, mimeType, x, y, w, h, img, 'fixed');
-	    		
+
 	    		// Resets input to force change event for same file
 	    		fileInput.value = '';
 	    	});
+
+			div.scrollTop = div.scrollHeight;
 		});
 		
 		var btn = mxUtils.button(mxResources.get('import'), function()
@@ -8304,6 +7928,7 @@ var LibraryDialog = function(editorUi, name, library, initialImages, file, mode)
 				}
 				
 				addButton(url, null, 0, 0, w, h);
+				div.scrollTop = div.scrollHeight;
 			}
 		});
 	});
@@ -8444,7 +8069,7 @@ var EditShapeDialog = function(editorUi, cell, title, w, h)
 			window.open('https://support.draw.io/display/DO/Editing+Shapes');
 		});
 		
-		helpBtn.className = 'geBtn';	
+		helpBtn.className = 'geBtn';
 		td.appendChild(helpBtn);
 	}
 	
@@ -8545,7 +8170,7 @@ var CustomDialog = function(editorUi, content, okFn, cancelFn, okButtonText, hel
 	
 	var btns = document.createElement('div');
 	btns.style.marginTop = '16px';
-	btns.style.textAlign = 'center';
+	btns.style.textAlign = 'right';
 
 	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
 	{

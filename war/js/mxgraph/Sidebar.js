@@ -432,19 +432,16 @@ Sidebar.prototype.addEntry = function(tags, fn)
 		// Replaces special characters
 		var tmp = tags.toLowerCase().replace(/[\/\,\(\)]/g, ' ').split(' ');
 
-		for (var i = 0; i < tmp.length; i++)
+		var doAddEntry = mxUtils.bind(this, function(tag)
 		{
-			// Replaces trailing numbers and special characters
-			tmp[i] = tmp[i].replace(/\.*\d*$/, '');
-			
-			if (tmp[i].length > 1)
+			if (tag.length > 1)
 			{
-				var entry = this.taglist[tmp[i]];
+				var entry = this.taglist[tag];
 				
 				if (entry == null)
 				{
 					entry = {entries: [], dict: new mxDictionary()};
-					this.taglist[tmp[i]] = entry;
+					this.taglist[tag] = entry;
 				}
 				
 				// Ignores duplicates
@@ -453,6 +450,19 @@ Sidebar.prototype.addEntry = function(tags, fn)
 					entry.dict.put(fn, fn);
 					entry.entries.push(fn);
 				}
+			}
+		});
+		
+		for (var i = 0; i < tmp.length; i++)
+		{
+			doAddEntry(tmp[i]);
+			
+			// Adds additional entry with removed trailing numbers
+			var normalized = tmp[i].replace(/\.*\d*$/, '');
+			
+			if (normalized != tmp[i])
+			{
+				doAddEntry(normalized);
 			}
 		}
 	}
@@ -1756,8 +1766,8 @@ Sidebar.prototype.createThumb = function(cells, width, height, parent, title, sh
 	this.graph.view.scaleAndTranslate(1, 0, 0);
 	this.graph.addCells(cells);
 	var bounds = this.graph.getGraphBounds();
-	var s = Math.floor(Math.min((width - 2 * this.thumbBorder) / bounds.width, (height - 2 * this.thumbBorder)
-		/ bounds.height) * 100) / 100;
+	var s = Math.floor(Math.min((width - 2 * this.thumbBorder) / bounds.width,
+			(height - 2 * this.thumbBorder) / bounds.height) * 100) / 100;
 	this.graph.view.scaleAndTranslate(s, Math.floor((width - bounds.width * s) / 2 / s - bounds.x),
 			Math.floor((height - bounds.height * s) / 2 / s - bounds.y));
 	
@@ -1835,6 +1845,11 @@ Sidebar.prototype.createItem = function(cells, title, showLabel, showTitle, widt
 	elt.style.width = (this.thumbWidth + border) + 'px';
 	elt.style.height = (this.thumbHeight + border) + 'px';
 	elt.style.padding = this.thumbPadding + 'px';
+	
+	if (mxClient.IS_IE6)
+	{
+		elt.style.border = 'none';
+	}
 	
 	// Blocks default click action
 	mxEvent.addListener(elt, 'click', function(evt)

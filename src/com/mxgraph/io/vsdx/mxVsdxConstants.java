@@ -20,10 +20,18 @@ public class mxVsdxConstants
 	public static String BOTTOM_MARGIN = "BottomMargin";
 	public static String BULLET = "Bullet";
 	public static String CASE = "Case";
-	public static String CHAR = "Char";
+	public static String CHARACTER = "Character";
 	public static String COLOR = "Color";
 	public static String COLOR_ENTRY = "ColorEntry";
 	public static String COLORS = "Colors";
+	
+	/**
+	 * Specifies the color transparency used for characters in a text run.
+	 * The value is normalized such that a value of 1 corresponds to 100 percent.
+	 * A value of zero specifies that the color is completely opaque;
+	 * a value of one specifies that the color is completely transparent.
+	 */
+	public static String COLOR_TRANS = "ColorTrans";
 	public static String CONNECT = "Connect";
 	public static String CONNECTS = "Connects";
 	public static String CONNECTION = "Connection";
@@ -85,7 +93,7 @@ public class mxVsdxConstants
 	public static String PAGE_HEIGHT = "PageHeight";
 	public static String PAGE_WIDTH = "PageWidth";
 	public static String PAGES = "Pages";
-	public static String PARAGRAPH = "Para";
+	public static String PARAGRAPH = "Paragraph";
 	public static String PIN_X = "PinX";
 	public static String PIN_Y = "PinY";
 	public static String POS = "Pos";

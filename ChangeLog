@@ -1,3 +1,154 @@
+08-FEB-2017: 6.0.3.7
+
+- Fixes preview for Embed HTML dialog
+
+08-FEB-2017: 6.0.3.6
+
+- Adds help button in publish link dialog
+- Uses desk.draw.io for searching help
+- Adds export HTML dialog
+
+07-FEB-2017: 6.0.3.5
+
+- Fixes hidden image in Chrome for image export to new window
+- Fixes fallback for non-public Google Drive files
+- Fixes blurred image for client-side image export in Chrome
+- Uses mxGraph 3.7.0.2 beta 2
+
+07-FEB-2017: 6.0.3.4
+
+- Shows related articles in help links
+- Adds link options in HTML and URL dialogs
+
+06-FEB-2017: 6.0.3.3
+
+- Uses mxGraph 3.7.0.2 beta 1
+- Fixes conversion for plain and formatted text
+- Adds Ctrl+Enter for newlines in Safari
+- Replaces ?url URL parameter with #U hash value
+- Uses public diagram URL in Google Drive Connector
+
+03-FEB-2017: 6.0.3.2
+
+- Fixes Embed dialogs
+- Moves Insert to Extras, CSV to File, Import
+- Adds fallback for Publish Link action
+- Removes Imgur and Github publish options
+
+03-FEB-2017: 6.0.3.1
+
+- Updates Dutch translations
+- Fixes lost value when cloning page while editing
+- Fixes possible NPE when removing images from custom libraries
+- Fixes unicode page name character in vsdx import
+
+31-JAN-2017: 6.0.3.0
+
+- Hides plugin warning for all local plugins
+- Adds prefetched URLs in embed to fix CORS issue
+- Fixes public URL for shared Google Drive files
+- Adds Export, URL and #R raw file types
+
+30-JAN-2017: 6.0.2.16
+
+- Adds CSV import plugin
+
+29-JAN-2017: 6.0.2.15
+
+- Uses mxGraph 3.7.0.1
+
+27-JAN-2017: 6.0.2.14
+
+- Fixes status bar in Firefox in Atlas theme
+
+26-JAN-2017: 6.0.2.13
+
+- Updates Arrange tab after remove from group
+- Faster image and SVG export
+- Uses mxGraph 3.7.0.1 beta 1
+
+18-JAN-2017: 6.0.2.12
+
+- Adds width, height in advanced export dialog
+
+18-JAN-2017: 6.0.2.11
+
+- Adds crop option for SVG and image export
+- Fixes PDF crop export option
+- Adds text extraction plugin
+- Uses mxGraph 3.7.0.0
+
+13-JAN-2017: 6.0.2.10
+
+- Removes green background from server-side image export
+- Ignores convention of not using double digit release numbers
+
+13-JAN-2017: 6.0.2.9
+
+- Adds Google Cloud icons
+- Removes lightbox link for Imgur files
+- Uses mxGraph 3.7.0.0 beta 13
+
+09-JAN-2017: 6.0.2.8
+
+- Adds props plugin
+- Uses mxGraph 3.7.0.0 beta 12
+- Adds help button in print dialog
+
+28-DEC-2016: 6.0.2.7
+
+- Adds dialog for selecting pages in docs add-on
+- Fixes update all for generic links in docs add-on
+- Adds open in new window, data URI import while offline
+- Adds import for Lucidchart files
+
+26-DEC-2016: 6.0.2.6
+
+- Fixes lazy loading of clients in chromeless mode
+- Fixes export of arbitrary pages with advanced dialog
+
+23-DEC-2016: 6.0.2.5
+
+- Adds PlantUML option in text dialog
+- Uses mxGraph 3.7.0.0 beta 11
+
+14-DEC-2016: 6.0.2.4
+
+- Adds text field support for .vsdx import
+
+13-DEC-2016: 6.0.2.3
+
+- Improves .vsdx import text handling
+
+12-DEC-2016: 6.0.2.2
+
+- Improves .vsdx import
+
+08-DEC-2016: 6.0.2.1
+
+- Adds edit option in HTML and SVG embed dialog
+- Moves tags, find plugins to editor
+- Uses mxGraph 3.7.0.0 beta 11
+- Fixes ignored width in viewer after page change
+- Adds number plugin for numbering shapes
+
+06-DEC-2016: 6.0.2.0
+
+- Stops allowing diagrams on new Conf Cloud pages
+- Fixes URL encoding for Conf Connect diagram names
+- Fixes page breaks, blank pages in PDF export
+- Fixes viewer in hidden containers for IE9-
+- Uses mxGraph 3.7.0.0 beta 10
+
+02-DEC-2016: 6.0.1.9
+
+- Adds context path to URL for Connect Rendermode
+
+01-DEC-2016: 6.0.1.8
+
+- Removes blocking DIV while inserting files
+- Adds marker styles for copy/paste style
+
 23-NOV-2016: 6.0.1.7
 
 - Fixes links to same domain for viewer in iframes
@@ -2866,7 +3017,7 @@
 - Adds edge width option in arrange panel
 - Changes replace existing diagram to open in this window
 - Fixes connection points for tee and corner shape
-- Fixes iconfinder search client for github domain
+- Fixes iconfinder search client for GitHub domain
 - Adds thumb=0 URL parameter to disable thumbnails in Drive
 - Adds autosize option in embed dialog for responsive pages
 - Adds rounded support for single- and doubleArrow vertices
@@ -4215,11 +4366,11 @@
 - Uses mxGraph 1.10.3.1
 - Fixes background color for SVG export in quirks mode
 - Enables Google image picker on Mac/iPad
-- Adds Github menu item in help menu
+- Adds GitHub menu item in help menu
 
 29-AUG-2012: 1.6.1.9
 
-- Fixes Github deployment Ant task
+- Fixes GitHub deployment Ant task
 - Fixes German Facebook button (changes to English)
 - Fixes touch-based panning for embedded diagrams
 - Uses mxGraph 1.10.3.0

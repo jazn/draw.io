@@ -35,10 +35,7 @@ Format.prototype.init = function()
 	graph.getSelectionModel().addListener(mxEvent.CHANGE, this.update);
 	graph.addListener(mxEvent.EDITING_STARTED, this.update);
 	graph.addListener(mxEvent.EDITING_STOPPED, this.update);
-	graph.getModel().addListener(mxEvent.CHANGE, mxUtils.bind(this, function()
-	{
-		this.clearSelectionState();
-	}));
+	graph.getModel().addListener(mxEvent.CHANGE, this.update);
 	graph.addListener(mxEvent.ROOT, mxUtils.bind(this, function()
 	{
 		this.refresh();
@@ -2184,6 +2181,12 @@ TextFormatPanel.prototype.addFont = function(container)
 	fontMenu.style.width = '192px';
 	fontMenu.style.height = '15px';
 	
+	// Workaround for offset in FF
+	if (mxClient.IS_FF)
+	{
+		fontMenu.getElementsByTagName('div')[0].style.marginTop = '-18px';
+	}
+	
 	var stylePanel2 = stylePanel.cloneNode(false);
 	stylePanel2.style.marginLeft = '-3px';
 	var fontStyleItems = this.editorUi.toolbar.addItems(['bold', 'italic', 'underline'], stylePanel2, true);
@@ -2383,7 +2386,7 @@ TextFormatPanel.prototype.addFont = function(container)
 	dirSelect.style.marginTop = '-2px';
 
 	// NOTE: For automatic we use the value null since automatic
-	// requires the text to be non formatted and non-wrappedto
+	// requires the text to be non formatted and non-wrapped
 	var dirs = ['automatic', 'leftToRight', 'rightToLeft'];
 	var dirSet = {'automatic': null,
 			'leftToRight': mxConstants.TEXT_DIRECTION_LTR,
